@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Thanh Menu -->
+  <header>
+    <a href="/" class="logo">🎬 AN MỘC NHIÊN</a>
+    
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Tìm kiếm tên phim...">
+      <button id="searchBtn">Tìm</button>
+    </div>
+
+    <div class="auth-nav" id="authNav">
+      <button id="loginBtn" class="btn-primary">Đăng Nhập</button>
+      <a href="/admin" style="text-decoration: none;"><button>Trang Quản Trị</button></a>
+    </div>
+  </header>
+
+  <!-- Banner Thể Loại & Phim Yêu Thích -->
+  <div class="genre-filter" id="genreFilter">
+    <div class="genre-tag active" data-slug="">Tất cả</div>
+    <div class="genre-tag" id="btnMyFavorites" style="border-color: #ff334b; color: #ff334b;">❤️ Phim Yêu Thích</div>
+  </div>
+
+  <!-- Danh Sách Phim -->
+  <main class="container">
+    <h2 class="section-title" id="listTitle">Phim Mới Cập Nhật</h2>
+    <div class="movie-grid" id="movieGrid">
+      <p style="color: var(--text-muted);">Đang tải phim...</p>
+    </div>
+  </main>
+
+  <!-- Modal Trình Xem Phim -->
+  <div class="modal" id="playerModal">
+    <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close" id="closeModal">&times;</button>
+      <div class="player-box">
+        <video id="videoPlayer" controls autoplay></video>
+      </div>
+      <div class="movie-details">
+        <h2 id="modalMovieTitle">Tên Phim</h2>
+        <p id="modalMovieDesc" style="color: var(--text-muted); margin: 10px 0;"></p>
+        
+        <h4>Chọn tập phim:</h4>
+        <div class="episode-list" id="episodeList"></div>
+
+        <!-- Khung Bình Luận Phim -->
+        <div class="comment-section" style="margin-top: 25px; border-top: 1px solid #333; padding-top: 18px;">
+          <h3 style="margin-bottom: 14px; font-size: 1.15rem; color: #f3f4f6; display: flex; align-items: center; gap: 8px;">
+            💬 Bình luận (<span id="commentCount">0</span>)
+          </h3>
+
+          <!-- Form gửi bình luận (dành cho user đã đăng nhập) -->
+          <div id="commentFormContainer" style="margin-bottom: 18px;">
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="commentInput" placeholder="Chia sẻ cảm nghĩ của bạn về bộ phim này..." style="flex: 1; padding: 11px 15px; background: #1f2937; border: 1px solid #374151; color: #fff; border-radius: 8px; outline: none; font-size: 0.95rem;">
+              <button id="sendCommentBtn" style="padding: 11px 22px; background: #e50914; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.95rem;">Gửi</button>
+            </div>
+          </div>
+
+          <!-- Thông báo nhắc đăng nhập nếu là khách -->
+          <div id="commentLoginNotice" style="display: none; color: #9ca3af; margin-bottom: 16px; background: #18181b; padding: 12px 16px; border-radius: 8px; border: 1px dashed #3f3f46;">
+            Vui lòng <span onclick="document.getElementById('authModal').style.display='block'" style="color: #e50914; cursor: pointer; text-decoration: underline; font-weight: bold;">Đăng Nhập</span> để tham gia bình luận cùng mọi người.
+          </div>
+
+          <!-- Danh sách hiển thị các bình luận -->
+          <div id="commentList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+            <p style="color: #9ca3af; font-size: 0.9rem;">Đang tải bình luận...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đăng Ký / Đăng Nhập -->
+  <div class="modal" id="authModal">
+    <div class="modal-content" style="max-width: 400px; padding: 25px;">
+      <button class="modal-close" id="closeAuthModal">&times;</button>
+      
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Đăng Nhập</div>
+        <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Đăng Ký</div>
+      </div>
+
+      <!-- Form Đăng Nhập -->
+      <form id="userLoginForm">
+        <div class="auth-form-group">
+          <label>Tên đăng nhập / Email</label>
+          <input type="text" id="loginUsername" required>
+        </div>
+        <div class="auth-form-group">
+          <label>Mật khẩu</label>
+          <input type="password" id="loginPassword" required>
+        </div>
+        <button type="submit" class="btn-auth-submit">Đăng Nhập</button>
+      </form>
+
+      <!-- Form Đăng Ký -->
+      <form id="userRegisterForm" style="display: none;">
+        <div class="auth-form-group">
+          <label>Tên đăng nhập</label>
+          <input type="text" id="regUsername" required>
+        </div>
+        <div class="auth-form-group">
+          <label>Email</label>
+          <input type="email" id="regEmail" required>
+        </div>
+        <div class="auth-form-group">
+          <label>Mật khẩu</label>
+          <input type="password" id="regPassword" required>
+        </div>
+        <button type="submit" class="btn-auth-submit">Đăng Ký Tài Khoản</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

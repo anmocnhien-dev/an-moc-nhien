@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - AN MỘC NHIÊN</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <div class="header">
+    <h1>🎬 Quản Trị Hệ Thống - AN MỘC NHIÊN</h1>
+    <div>
+      <a href="/" target="_blank">Xem Trang Chủ ↗</a>
+      <button id="logoutBtn" style="display:none; margin-left:15px; background:transparent; border:1px solid #444; color:#fff; padding:5px 10px; border-radius:4px; cursor:pointer;">Đăng Xuất</button>
+    </div>
+  </div>
+
+  <!-- Form Đăng Nhập Quản Trị -->
+  <div id="loginSection" class="login-box">
+    <h2>Đăng Nhập Quản Trị</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Tài khoản</label>
+        <input type="text" id="adminUser" value="admin" required>
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="adminPass" value="Admin@123456" required>
+      </div>
+      <button type="submit" class="btn-submit">Đăng Nhập</button>
+    </form>
+  </div>
+
+  <!-- Bảng Quản Trị Phim -->
+  <div id="adminPanel" class="dashboard" style="display: none;">
+    
+    <!-- Cột trái: Form Thêm Phim & Tập -->
+    <div>
+      <div class="card">
+        <h3>➕ Thêm Phim Mới</h3>
+        <form id="addMovieForm">
+          <div class="form-group">
+            <label>Tên phim</label>
+            <input type="text" id="movieTitle" required placeholder="Ví dụ: Tây Du Ký">
+          </div>
+          <div class="form-group">
+            <label>Slug (Đường dẫn tĩnh)</label>
+            <input type="text" id="movieSlug" required placeholder="vi-du: tay-du-ky">
+          </div>
+          <div class="form-group">
+            <label>Thể loại</label>
+            <select id="movieGenre"></select>
+          </div>
+          <div class="form-group">
+            <label>Năm phát hành</label>
+            <input type="number" id="movieYear" value="2026">
+          </div>
+          <div class="form-group">
+            <label>Link ảnh Poster</label>
+            <input type="text" id="moviePoster" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>Mô tả ngắn</label>
+            <textarea id="movieDesc" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn-submit">Lưu Phim</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>🎬 Thêm Tập Phim</h3>
+        <form id="addEpisodeForm">
+          <div class="form-group">
+            <label>Chọn Phim</label>
+            <select id="epMovieSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Tập số</label>
+            <input type="number" id="epNumber" value="1" required>
+          </div>
+          <div class="form-group">
+            <label>Tiêu đề tập</label>
+            <input type="text" id="epTitle" placeholder="Tập 1">
+          </div>
+          <div class="form-group">
+            <label>Link Video (MP4)</label>
+            <input type="text" id="epVideoUrl" required placeholder="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
+          </div>
+          <button type="submit" class="btn-submit">Thêm Tập</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Cột phải: Danh Sách Phim Hiện Có -->
+    <div>
+      <div class="card">
+        <h3>📋 Danh Sách Phim</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tên Phim</th>
+              <th>Thể loại</th>
+              <th>Lượt xem</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="movieTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
