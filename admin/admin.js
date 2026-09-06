@@ -97,6 +97,79 @@ async function loadAdminMovies() {
   }
 }
 
+// ==========================================
+// HÀM DÙNG CHUNG: UPLOAD FILE LÊN CLOUDINARY
+// ==========================================
+async function uploadToCloudinary(file, type, targetInputId, statusElementId) {
+  if (!file) return;
+
+  if (!token) {
+    alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!');
+    return;
+  }
+
+  const endpoint = type === 'video' ? '/api/admin/upload-video' : '/api/admin/upload-image';
+  const fieldName = type === 'video' ? 'video' : 'image';
+
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  const targetInput = document.getElementById(targetInputId);
+  const statusEl = document.getElementById(statusElementId);
+
+  // Hiển thị trạng thái đang tải
+  statusEl.style.display = 'block';
+  statusEl.style.color = '#ff9800';
+  statusEl.innerText = `⏳ Đang tải ${type === 'video' ? 'video' : 'ảnh'} lên Cloudinary... Vui lòng chờ!`;
+  targetInput.disabled = true;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      targetInput.value = data.url;
+      statusEl.style.color = '#00e676';
+      statusEl.innerText = `✅ Tải ${type === 'video' ? 'video' : 'ảnh'} lên Cloudinary thành công!`;
+    } else {
+      statusEl.style.color = '#ff5252';
+      statusEl.innerText = `❌ Lỗi: ${data.message}`;
+      alert('Lỗi tải file: ' + data.message);
+    }
+  } catch (error) {
+    statusEl.style.color = '#ff5252';
+    statusEl.innerText = '❌ Không thể kết nối tới server upload!';
+    alert('Lỗi kết nối khi tải file!');
+  } finally {
+    targetInput.disabled = false;
+  }
+}
+
+// Bắt sự kiện khi chọn file Poster
+const posterFileInput = document.getElementById('posterFileInput');
+if (posterFileInput) {
+  posterFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    uploadToCloudinary(file, 'image', 'moviePoster', 'posterUploadStatus');
+  });
+}
+
+// Bắt sự kiện khi chọn file Video tập phim
+const videoFileInput = document.getElementById('videoFileInput');
+if (videoFileInput) {
+  videoFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    uploadToCloudinary(file, 'video', 'epVideoUrl', 'videoUploadStatus');
+  });
+}
+
 // Thêm phim
 document.getElementById('addMovieForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -122,6 +195,8 @@ document.getElementById('addMovieForm').addEventListener('submit', async (e) => 
   if (data.status === 'success') {
     alert('Thêm phim thành công!');
     document.getElementById('addMovieForm').reset();
+    const statusPoster = document.getElementById('posterUploadStatus');
+    if (statusPoster) statusPoster.style.display = 'none';
     loadAdminMovies();
   } else {
     alert(data.message);
@@ -152,6 +227,10 @@ document.getElementById('addEpisodeForm').addEventListener('submit', async (e) =
     alert('Đã thêm tập phim thành công!');
     document.getElementById('epTitle').value = '';
     document.getElementById('epVideoUrl').value = '';
+    const videoInput = document.getElementById('videoFileInput');
+    if (videoInput) videoInput.value = '';
+    const statusVideo = document.getElementById('videoUploadStatus');
+    if (statusVideo) statusVideo.style.display = 'none';
     document.getElementById('epNumber').value = Number(body.episode_number) + 1;
   } else {
     alert(data.message);

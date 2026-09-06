@@ -56,10 +56,15 @@
             <label>Năm phát hành</label>
             <input type="number" id="movieYear" value="2026">
           </div>
+          
+          <!-- Upload ảnh bìa Poster -->
           <div class="form-group">
-            <label>Link ảnh Poster</label>
-            <input type="text" id="moviePoster" placeholder="https://...">
+            <label>Ảnh bìa Poster</label>
+            <input type="file" id="posterFileInput" accept="image/*" style="margin-bottom: 6px;">
+            <input type="text" id="moviePoster" placeholder="Link ảnh hoặc tải file ở trên...">
+            <small id="posterUploadStatus" style="display:none; color:#00e676; font-size:12px;"></small>
           </div>
+
           <div class="form-group">
             <label>Mô tả ngắn</label>
             <textarea id="movieDesc" rows="3"></textarea>
@@ -83,10 +88,15 @@
             <label>Tiêu đề tập</label>
             <input type="text" id="epTitle" placeholder="Tập 1">
           </div>
+
+          <!-- Upload file Video tập phim -->
           <div class="form-group">
-            <label>Link Video (MP4)</label>
-            <input type="text" id="epVideoUrl" required placeholder="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
+            <label>Video tập phim</label>
+            <input type="file" id="videoFileInput" accept="video/mp4,video/mkv,video/*" style="margin-bottom: 6px;">
+            <input type="text" id="epVideoUrl" required placeholder="Dán link hoặc chọn tệp video ở trên...">
+            <small id="videoUploadStatus" style="display:none; color:#00e676; font-size:12px;"></small>
           </div>
+
           <button type="submit" class="btn-submit">Thêm Tập</button>
         </form>
       </div>
