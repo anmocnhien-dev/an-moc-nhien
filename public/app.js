@@ -123,6 +123,67 @@ async function loadMovies(searchTerm = '') {
 // ==========================================
 // 2. PHÁT PHIM, CHỌN TẬP & MỞ BÌNH LUẬN
 // ==========================================
+
+// Hàm chuyển đổi thông minh giữa Iframe (Drive) và Video thẻ (Cloudinary/MP4)
+function setVideoSource(url) {
+  let player = document.getElementById('videoPlayer');
+  if (!player) return;
+
+  if (!url) {
+    if (player.tagName.toLowerCase() === 'video') {
+      player.pause();
+      player.src = '';
+    } else {
+      player.src = '';
+    }
+    return;
+  }
+
+  // Nếu là đường dẫn Google Drive
+  if (url.includes('drive.google.com')) {
+    let embedUrl = url;
+    if (url.includes('/file/d/')) {
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+      }
+    } else if (url.includes('id=')) {
+      const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+      }
+    }
+
+    // Nếu đang là thẻ video thì chuyển thành thẻ iframe
+    if (player.tagName.toLowerCase() !== 'iframe') {
+      const iframe = document.createElement('iframe');
+      iframe.id = 'videoPlayer';
+      iframe.style.width = '100%';
+      iframe.style.aspectRatio = '16/9';
+      iframe.style.border = 'none';
+      iframe.allow = 'autoplay; fullscreen';
+      iframe.allowFullscreen = true;
+      player.parentNode.replaceChild(iframe, player);
+      player = iframe;
+    }
+    player.src = embedUrl;
+  } else {
+    // Nếu là file video MP4 thông thường hoặc Cloudinary
+    if (player.tagName.toLowerCase() !== 'video') {
+      const video = document.createElement('video');
+      video.id = 'videoPlayer';
+      video.controls = true;
+      video.autoplay = true;
+      video.style.width = '100%';
+      video.style.aspectRatio = '16/9';
+      player.parentNode.replaceChild(video, player);
+      player = video;
+    }
+    player.src = url;
+    player.play().catch(() => {});
+  }
+}
+
 async function openMovie(movieId) {
   try {
     const res = await fetch(`/api/movies/${movieId}`);
@@ -130,13 +191,12 @@ async function openMovie(movieId) {
 
     if (json.status === 'success') {
       const movie = json.data;
-      currentOpeningMovieId = movie.id; // Lưu ID phim đang mở
+      currentOpeningMovieId = movie.id;
 
       document.getElementById('modalMovieTitle').textContent = movie.title;
       document.getElementById('modalMovieDesc').textContent = movie.description || 'Chưa có mô tả.';
 
       const episodeList = document.getElementById('episodeList');
-      const player = document.getElementById('videoPlayer');
 
       if (movie.episodes && movie.episodes.length > 0) {
         episodeList.innerHTML = movie.episodes.map((ep, idx) => `
@@ -145,17 +205,16 @@ async function openMovie(movieId) {
           </button>
         `).join('');
 
-        player.src = movie.episodes[0].video_url;
-        player.play();
+        setVideoSource(movie.episodes[0].video_url);
       } else {
         episodeList.innerHTML = '<p style="color: #9ca3af;">Phim chưa cập nhật tập nào.</p>';
-        player.src = '';
+        setVideoSource('');
       }
 
-      // Tăng view
+      // Tăng lượt xem
       fetch(`/api/movies/${movieId}/view`, { method: 'POST' });
 
-      // Tải bình luận của phim này
+      // Tải bình luận
       loadMovieComments(movieId);
 
       document.getElementById('playerModal').style.display = 'block';
@@ -166,19 +225,14 @@ async function openMovie(movieId) {
 }
 
 function playEpisode(url, btn) {
-  const player = document.getElementById('videoPlayer');
-  player.src = url;
-  player.play();
-
+  setVideoSource(url);
   document.querySelectorAll('.episode-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 document.getElementById('closeModal').addEventListener('click', () => {
   const modal = document.getElementById('playerModal');
-  const player = document.getElementById('videoPlayer');
-  player.pause();
-  player.src = '';
+  setVideoSource(''); // Dừng phát hoàn toàn
   modal.style.display = 'none';
   currentOpeningMovieId = null;
 });
@@ -285,7 +339,6 @@ async function loadMovieComments(movieId) {
 
   if (!commentList) return;
 
-  // Kiểm tra đăng nhập để hiển thị ô nhập
   if (userToken) {
     if (formBox) formBox.style.display = 'block';
     if (noticeBox) noticeBox.style.display = 'none';
@@ -363,7 +416,7 @@ async function sendUserComment() {
 
     if (json.status === 'success') {
       input.value = '';
-      loadMovieComments(currentOpeningMovieId); // Làm mới danh sách hiển thị bình luận
+      loadMovieComments(currentOpeningMovieId);
     } else {
       alert(json.message || 'Không thể gửi bình luận.');
     }
@@ -455,7 +508,6 @@ document.getElementById('userLoginForm').addEventListener('submit', async (e) =>
       await loadUserFavorites();
       loadMovies();
 
-      // Nếu đang mở phim thì cập nhật lại ô bình luận
       if (currentOpeningMovieId) {
         loadMovieComments(currentOpeningMovieId);
       }
@@ -499,7 +551,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   loadMovies();
   renderUserNav();
 
-  // Gán sự kiện cho nút Gửi và phím Enter bình luận
   const sendCommentBtn = document.getElementById('sendCommentBtn');
   const commentInput = document.getElementById('commentInput');
 
