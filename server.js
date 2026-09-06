@@ -77,7 +77,7 @@ app.post('/api/auth/register', async (req, res) => {
       [username.trim(), email.trim().toLowerCase(), hashedPassword],
       function (err) {
         if (err) {
-          if (err.message.includes('UNIQUE constraint failed')) {
+          if (err.message && (err.message.includes('UNIQUE constraint failed') || err.message.includes('duplicate key'))) {
             return res.status(400).json({ status: 'error', message: 'Tên người dùng hoặc email đã tồn tại.' });
           }
           return res.status(500).json({ status: 'error', message: 'Lỗi khi tạo tài khoản: ' + err.message });
@@ -243,10 +243,11 @@ app.post('/api/movies/:id/view', (req, res) => {
 // Tự động kiểm tra và tạo bảng favorites nếu chưa tồn tại
 db.run(`
   CREATE TABLE IF NOT EXISTS favorites (
+    id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     movie_id INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, movie_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, movie_id)
   )
 `, (err) => {
   if (err) console.error('❌ Lỗi tạo bảng favorites:', err.message);
@@ -354,11 +355,11 @@ app.post('/api/history', authenticateToken, (req, res) => {
 // Tự động kiểm tra và tạo bảng comments nếu chưa có
 db.run(`
   CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     movie_id INTEGER NOT NULL,
     content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id),
     FOREIGN KEY(movie_id) REFERENCES movies(id)
   )
