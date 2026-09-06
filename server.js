@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const db = require('./db');
+const { upload } = require('./cloudinary');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -503,12 +504,48 @@ app.put('/api/admin/users/:id/toggle-lock', authenticateToken, requireAdmin, (re
 });
 
 // ==========================================
+// 7.5. API UPLOAD MEDIA LÊN CLOUDINARY
+// ==========================================
+
+// Upload ảnh bìa / banner (lưu vĩnh viễn)
+app.post('/api/admin/upload-image', authenticateToken, requireAdmin, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: 'error', message: 'Vui lòng chọn file ảnh để tải lên.' });
+    }
+    res.json({
+      status: 'success',
+      message: 'Tải ảnh lên Cloudinary thành công.',
+      url: req.file.path
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// Upload video tập phim (lưu vĩnh viễn)
+app.post('/api/admin/upload-video', authenticateToken, requireAdmin, upload.single('video'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: 'error', message: 'Vui lòng chọn file video để tải lên.' });
+    }
+    res.json({
+      status: 'success',
+      message: 'Tải video lên Cloudinary thành công.',
+      url: req.file.path
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// ==========================================
 // 8. KHỞI ĐỘNG SERVER
 // ==========================================
 app.listen(PORT, () => {
   console.log('====================================================');
   console.log(`🎬 AN MỘC NHIÊN - Movie Streaming Platform`);
   console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
-  console.log(`🔍 Health check API:  http://localhost:${PORT}/api/health`);
+  console.log(`🔍 Health check API:   http://localhost:${PORT}/api/health`);
   console.log('====================================================');
 });
