@@ -1,185 +1,596 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=3.0">
-  <style>
-    /* Khung phát video chống đè vùng cảm ứng và chuẩn tỉ lệ 16:9 */
-    .player-box {
-      position: relative !important;
-      width: 100% !important;
-      aspect-ratio: 16 / 9 !important;
-      background: #000 !important;
-      border-radius: 8px !important;
-      overflow: hidden !important;
-      z-index: 10 !important;
-      pointer-events: auto !important;
-      touch-action: manipulation !important;
-      -webkit-touch-callout: none !important;
-      -webkit-user-select: none !important;
-      user-select: none !important;
+let currentMovies = [];
+let activeGenre = '';
+let userToken = localStorage.getItem('user_token') || '';
+
+// Chống crash cú pháp JSON.parse nếu dữ liệu user bị lỗi/undefined
+let currentUser = null;
+try {
+  const storedUser = localStorage.getItem('user_info');
+  if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
+    currentUser = JSON.parse(storedUser);
+  }
+} catch (e) {
+  console.warn('Lỗi đọc user_info từ cache:', e);
+  currentUser = null;
+}
+
+let favoriteMovieIds = [];
+let currentOpeningMovieId = null;
+
+// Biến lưu danh sách tập và vị trí tập đang phát
+let currentMovieEpisodes = [];
+let currentEpisodeIndex = 0;
+let isSwitchingEpisode = false;
+
+// ==========================================
+// 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
+// ==========================================
+async function loadGenres() {
+  try {
+    const genreFilter = document.getElementById('genreFilter');
+    const btnMyFavorites = document.getElementById('btnMyFavorites');
+
+    // Gắn sự kiện Phim Yêu Thích
+    if (btnMyFavorites && !btnMyFavorites.dataset.bound) {
+      btnMyFavorites.dataset.bound = 'true';
+      btnMyFavorites.addEventListener('click', async () => {
+        if (!userToken) {
+          alert('Vui lòng đăng nhập để xem danh sách yêu thích của bạn!');
+          const authModal = document.getElementById('authModal');
+          if (authModal) authModal.style.display = 'block';
+          return;
+        }
+
+        document.querySelectorAll('.genre-tag').forEach(el => el.classList.remove('active'));
+        btnMyFavorites.classList.add('active');
+        activeGenre = '';
+
+        await loadUserFavorites();
+        const favMovies = currentMovies.filter(m => favoriteMovieIds.includes(m.id));
+        renderMovieList(favMovies, '❤️ Danh Sách Phim Yêu Thích');
+      });
     }
 
-    .player-box video,
-    .player-box iframe {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      border: none !important;
-      pointer-events: auto !important;
-      display: block !important;
+    // Gắn sự kiện nút Tất Cả
+    const allTag = genreFilter ? genreFilter.querySelector('.genre-tag[data-slug=""]') : null;
+    if (allTag && !allTag.dataset.bound) {
+      allTag.dataset.bound = 'true';
+      allTag.addEventListener('click', () => {
+        document.querySelectorAll('.genre-tag').forEach(el => el.classList.remove('active'));
+        allTag.classList.add('active');
+        activeGenre = '';
+        loadMovies();
+      });
     }
 
-    /* Ẩn nút download mặc định trên các trình duyệt di động */
-    video::-internal-media-controls-download-button {
-      display: none !important;
+    const res = await fetch('/api/genres');
+    const json = await res.json();
+
+    if (json.status === 'success' && genreFilter && Array.isArray(json.data)) {
+      // Xóa các tag cũ nếu có để tránh trùng
+      const oldTags = genreFilter.querySelectorAll('.genre-tag-dynamic');
+      oldTags.forEach(t => t.remove());
+
+      json.data.forEach(g => {
+        const tag = document.createElement('div');
+        tag.className = 'genre-tag genre-tag-dynamic';
+        tag.dataset.slug = g.slug;
+        tag.textContent = g.name;
+        tag.addEventListener('click', () => {
+          document.querySelectorAll('.genre-tag').forEach(el => el.classList.remove('active'));
+          tag.classList.add('active');
+          activeGenre = g.slug;
+          loadMovies();
+        });
+        genreFilter.appendChild(tag);
+      });
     }
-    video::-webkit-media-controls-enclosure {
-      overflow: hidden;
-    }
+  } catch (err) {
+    console.error('Lỗi tải thể loại:', err);
+  }
+}
 
-    /* Tinh chỉnh modal vừa vặn trên màn hình điện thoại */
-    @media (max-width: 768px) {
-      .modal-content {
-        width: 95% !important;
-        margin: 10px auto !important;
-        padding: 12px !important;
-        border-radius: 10px !important;
-      }
-      .player-box {
-        margin-top: 28px;
-      }
-    }
-  </style>
-</head>
-<body>
+// Render danh sách thẻ phim
+function renderMovieList(movies, titleText = 'Phim Mới Cập Nhật') {
+  const movieGrid = document.getElementById('movieGrid');
+  const titleEl = document.getElementById('listTitle');
+  if (titleEl) titleEl.textContent = titleText;
+  if (!movieGrid) return;
 
-  <!-- Thanh Menu -->
-  <header>
-    <a href="/" class="logo">🎬 AN MỘC NHIÊN</a>
-    
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Tìm kiếm tên phim...">
-      <button id="searchBtn">Tìm</button>
-    </div>
-
-    <div class="auth-nav" id="authNav">
-      <button id="loginBtn" class="btn-primary">Đăng Nhập</button>
-      <a href="/admin" style="text-decoration: none;"><button>Trang Quản Trị</button></a>
-    </div>
-  </header>
-
-  <!-- Banner Thể Loại & Phim Yêu Thích -->
-  <div class="genre-filter" id="genreFilter">
-    <div class="genre-tag active" data-slug="">Tất cả</div>
-    <div class="genre-tag" id="btnMyFavorites" style="border-color: #ff334b; color: #ff334b;">❤️ Phim Yêu Thích</div>
-  </div>
-
-  <!-- Danh Sách Phim -->
-  <main class="container">
-    <h2 class="section-title" id="listTitle">Phim Mới Cập Nhật</h2>
-    <div class="movie-grid" id="movieGrid">
-      <p style="color: var(--text-muted);">Đang tải phim...</p>
-    </div>
-  </main>
-
-  <!-- Modal Trình Xem Phim -->
-  <div class="modal" id="playerModal">
-    <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
-      <button class="modal-close" id="closeModal">&times;</button>
-      <div class="player-box">
-        <video 
-          id="videoPlayer" 
-          controls 
-          autoplay 
-          playsinline 
-          webkit-playsinline 
-          controlsList="nodownload" 
-          oncontextmenu="return false;">
-        </video>
-      </div>
-      <div class="movie-details">
-        <h2 id="modalMovieTitle">Tên Phim</h2>
-        <p id="modalMovieDesc" style="color: var(--text-muted); margin: 10px 0;"></p>
-        
-        <h4>Chọn tập phim:</h4>
-        <div class="episode-list" id="episodeList"></div>
-
-        <!-- Khung Bình Luận Phim -->
-        <div class="comment-section" style="margin-top: 25px; border-top: 1px solid #333; padding-top: 18px;">
-          <h3 style="margin-bottom: 14px; font-size: 1.15rem; color: #f3f4f6; display: flex; align-items: center; gap: 8px;">
-            💬 Bình luận (<span id="commentCount">0</span>)
-          </h3>
-
-          <!-- Form gửi bình luận -->
-          <div id="commentFormContainer" style="margin-bottom: 18px;">
-            <div style="display: flex; gap: 10px;">
-              <input type="text" id="commentInput" placeholder="Chia sẻ cảm nghĩ của bạn về bộ phim này..." style="flex: 1; padding: 11px 15px; background: #1f2937; border: 1px solid #374151; color: #fff; border-radius: 8px; outline: none; font-size: 0.95rem;">
-              <button id="sendCommentBtn" style="padding: 11px 22px; background: #e50914; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.95rem;">Gửi</button>
+  if (movies && movies.length > 0) {
+    movieGrid.innerHTML = movies.map(movie => {
+      const isFav = favoriteMovieIds.includes(movie.id);
+      return `
+        <div class="movie-card" onclick="openMovie(${movie.id})">
+          <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite(event, ${movie.id})">
+            ${isFav ? '❤️' : '🤍'}
+          </button>
+          <img src="${movie.poster_url || 'https://via.placeholder.com/300x450?text=No+Poster'}" alt="${movie.title}">
+          <div class="movie-info">
+            <div class="movie-title">${movie.title}</div>
+            <div class="movie-meta">
+              <span>${movie.genre_name || 'Khác'}</span>
+              <span>👁️ ${movie.views || 0}</span>
             </div>
           </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    movieGrid.innerHTML = '<p style="color: #9ca3af; padding: 20px 0;">Hiện chưa có bộ phim nào trong danh mục này.</p>';
+  }
+}
 
-          <!-- Nhắc đăng nhập cho khách -->
-          <div id="commentLoginNotice" style="display: none; color: #9ca3af; margin-bottom: 16px; background: #18181b; padding: 12px 16px; border-radius: 8px; border: 1px dashed #3f3f46;">
-            Vui lòng <span onclick="document.getElementById('authModal').style.display='block'" style="color: #e50914; cursor: pointer; text-decoration: underline; font-weight: bold;">Đăng Nhập</span> để tham gia bình luận cùng mọi người.
+async function loadMovies(searchTerm = '') {
+  const movieGrid = document.getElementById('movieGrid');
+  if (movieGrid) {
+    movieGrid.innerHTML = '<p style="color: #9ca3af; padding: 20px 0;">Đang tải danh sách phim...</p>';
+  }
+
+  try {
+    let url = `/api/movies?limit=50`;
+    if (activeGenre) url += `&genre=${encodeURIComponent(activeGenre)}`;
+    if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      currentMovies = json.data;
+      renderMovieList(currentMovies, searchTerm ? `Kết quả tìm kiếm cho: "${searchTerm}"` : 'Phim Mới Cập Nhật');
+    } else {
+      if (movieGrid) movieGrid.innerHTML = '<p style="color: #9ca3af; padding: 20px 0;">Hiện chưa có phim nào trong mục này.</p>';
+    }
+  } catch (err) {
+    console.error('Lỗi loadMovies:', err);
+    if (movieGrid) movieGrid.innerHTML = '<p style="color: #ef4444; padding: 20px 0;">Không thể tải dữ liệu phim. Vui lòng thử lại sau.</p>';
+  }
+}
+
+// ==========================================
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP
+// ==========================================
+function playNextEpisode() {
+  if (isSwitchingEpisode) return;
+  if (currentEpisodeIndex + 1 < currentMovieEpisodes.length) {
+    isSwitchingEpisode = true;
+    currentEpisodeIndex++;
+    const nextEpisode = currentMovieEpisodes[currentEpisodeIndex];
+    const allBtns = document.querySelectorAll('.episode-btn');
+    
+    playEpisode(nextEpisode.video_url, allBtns[currentEpisodeIndex], currentEpisodeIndex);
+    
+    setTimeout(() => {
+      isSwitchingEpisode = false;
+    }, 1200);
+  } else {
+    alert('Bạn đang xem tập mới nhất của bộ phim này rồi!');
+  }
+}
+
+function setVideoSource(url) {
+  const playerBox = document.querySelector('.player-box');
+  if (!playerBox) return;
+
+  if (!url) {
+    playerBox.innerHTML = '<div style="width:100%;height:100%;background:#000;"></div>';
+    return;
+  }
+
+  if (url.includes('drive.google.com')) {
+    let embedUrl = url;
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (fileIdMatch && fileIdMatch[1]) {
+      embedUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+    } else if (url.includes('/view')) {
+      embedUrl = url.replace('/view', '/preview');
+    }
+
+    playerBox.innerHTML = `
+      <iframe 
+        id="videoPlayer"
+        src="${embedUrl}" 
+        style="width: 100% !important; height: 100% !important; border: none; display: block;" 
+        allow="autoplay; fullscreen; encrypted-media" 
+        sandbox="allow-scripts allow-same-origin allow-presentation"
+        allowfullscreen>
+      </iframe>
+    `;
+  } else {
+    playerBox.innerHTML = `
+      <video 
+        id="videoPlayer" 
+        src="${url}" 
+        controls 
+        autoplay 
+        playsinline 
+        webkit-playsinline 
+        controlsList="nodownload" 
+        oncontextmenu="return false;"
+        style="width: 100% !important; height: 100% !important; display: block; object-fit: contain;">
+      </video>
+    `;
+
+    const videoEl = playerBox.querySelector('video');
+    if (videoEl) {
+      videoEl.onended = () => playNextEpisode();
+      videoEl.play().catch(err => console.warn('Trình duyệt chặn autoplay:', err));
+    }
+  }
+}
+
+async function openMovie(movieId) {
+  try {
+    const res = await fetch(`/api/movies/${movieId}`);
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      const movie = json.data;
+      currentOpeningMovieId = movie.id;
+      currentMovieEpisodes = movie.episodes || [];
+      currentEpisodeIndex = 0;
+      isSwitchingEpisode = false;
+
+      document.getElementById('modalMovieTitle').textContent = movie.title;
+      document.getElementById('modalMovieDesc').textContent = movie.description || 'Chưa có mô tả.';
+
+      const episodeList = document.getElementById('episodeList');
+
+      if (currentMovieEpisodes.length > 0) {
+        const quickNextBtnHtml = currentMovieEpisodes.length > 1
+          ? `<div style="margin-bottom: 12px;"><button type="button" onclick="playNextEpisode()" style="background: #2563eb; color: #ffffff; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">Tập Tiếp Theo ▶</button></div>`
+          : '';
+
+        episodeList.innerHTML = quickNextBtnHtml + currentMovieEpisodes.map((ep, idx) => `
+          <button class="episode-btn ${idx === 0 ? 'active' : ''}" onclick="playEpisode('${ep.video_url}', this, ${idx})">
+            ${ep.title || 'Tập ' + ep.episode_number}
+          </button>
+        `).join('');
+
+        setVideoSource(currentMovieEpisodes[0].video_url);
+      } else {
+        episodeList.innerHTML = '<p style="color: #9ca3af;">Phim chưa cập nhật tập nào.</p>';
+        setVideoSource('');
+      }
+
+      fetch(`/api/movies/${movieId}/view`, { method: 'POST' });
+      loadMovieComments(movieId);
+
+      document.getElementById('playerModal').style.display = 'block';
+    }
+  } catch (err) {
+    alert('Không thể mở thông tin phim này.');
+  }
+}
+
+function playEpisode(url, btn, idx) {
+  if (typeof idx === 'number') currentEpisodeIndex = idx;
+  setVideoSource(url);
+  document.querySelectorAll('.episode-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+const closeModalBtn = document.getElementById('closeModal');
+if (closeModalBtn) {
+  closeModalBtn.addEventListener('click', () => {
+    const modal = document.getElementById('playerModal');
+    setVideoSource('');
+    if (modal) modal.style.display = 'none';
+    currentOpeningMovieId = null;
+    currentMovieEpisodes = [];
+    currentEpisodeIndex = 0;
+    isSwitchingEpisode = false;
+  });
+}
+
+const searchBtn = document.getElementById('searchBtn');
+if (searchBtn) {
+  searchBtn.addEventListener('click', () => {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput ? searchInput.value.trim() : '';
+    loadMovies(query);
+  });
+}
+
+// ==========================================
+// 3. TÍNH NĂNG YÊU THÍCH (FAVORITES)
+// ==========================================
+async function loadUserFavorites() {
+  if (!userToken) {
+    favoriteMovieIds = [];
+    return;
+  }
+  try {
+    const res = await fetch('/api/user/favorites', {
+      headers: { 'Authorization': `Bearer ${userToken}` }
+    });
+    if (res.status === 401 || res.status === 403) {
+      logoutUser();
+      return;
+    }
+    const json = await res.json();
+    if (json.status === 'success') {
+      favoriteMovieIds = json.data || [];
+    }
+  } catch (err) {
+    console.warn('Lỗi loadUserFavorites:', err);
+  }
+}
+
+async function toggleFavorite(e, movieId) {
+  if (e) e.stopPropagation();
+  const btn = e ? (e.currentTarget || (e.target && e.target.closest ? e.target.closest('.fav-btn') : e.target)) : null;
+
+  if (!userToken) {
+    alert('Vui lòng đăng nhập để lưu phim yêu thích!');
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/user/favorites/${movieId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      }
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!');
+      logoutUser();
+      return;
+    }
+
+    const json = await res.json();
+    if (json.status === 'success') {
+      if (json.favorited) {
+        if (btn) {
+          btn.classList.add('active');
+          btn.innerHTML = '❤️';
+        }
+        if (!favoriteMovieIds.includes(movieId)) favoriteMovieIds.push(movieId);
+      } else {
+        if (btn) {
+          btn.classList.remove('active');
+          btn.innerHTML = '🤍';
+        }
+        favoriteMovieIds = favoriteMovieIds.filter(id => id !== movieId);
+        const btnMyFavorites = document.getElementById('btnMyFavorites');
+        if (btnMyFavorites && btnMyFavorites.classList.contains('active')) {
+          const favMovies = currentMovies.filter(m => favoriteMovieIds.includes(m.id));
+          renderMovieList(favMovies, '❤️ Danh Sách Phim Yêu Thích');
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi toggleFavorite:', err);
+  }
+}
+
+// ==========================================
+// 4. BÌNH LUẬN (COMMENTS)
+// ==========================================
+async function loadMovieComments(movieId) {
+  const commentList = document.getElementById('commentList');
+  const commentCount = document.getElementById('commentCount');
+  const formBox = document.getElementById('commentFormContainer');
+  const noticeBox = document.getElementById('commentLoginNotice');
+
+  if (!commentList) return;
+
+  if (userToken) {
+    if (formBox) formBox.style.display = 'block';
+    if (noticeBox) noticeBox.style.display = 'none';
+  } else {
+    if (formBox) formBox.style.display = 'none';
+    if (noticeBox) noticeBox.style.display = 'block';
+  }
+
+  commentList.innerHTML = '<p style="color: #9ca3af; font-size: 0.9rem;">Đang tải bình luận...</p>';
+
+  try {
+    const res = await fetch(`/api/movies/${movieId}/comments`);
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      const list = json.data || [];
+      if (commentCount) commentCount.textContent = list.length;
+
+      if (list.length === 0) {
+        commentList.innerHTML = '<p style="color: #9ca3af; font-size: 0.9rem;">Chưa có bình luận nào. Hãy là người đầu tiên để lại ý kiến!</p>';
+        return;
+      }
+
+      commentList.innerHTML = list.map(c => `
+        <div style="background: #18181b; padding: 10px 14px; border-radius: 8px; border: 1px solid #27272a;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <span style="font-weight: bold; color: #60a5fa; font-size: 0.92rem;">👤 ${c.username}</span>
+            <span style="color: #71717a; font-size: 0.78rem;">${new Date(c.created_at).toLocaleDateString('vi-VN')}</span>
           </div>
-
-          <!-- Danh sách bình luận -->
-          <div id="commentList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
-            <p style="color: #9ca3af; font-size: 0.9rem;">Đang tải bình luận...</p>
-          </div>
+          <div style="color: #e4e4e7; font-size: 0.93rem; line-height: 1.4; word-break: break-word;">${c.content}</div>
         </div>
+      `).join('');
+    }
+  } catch (err) {
+    commentList.innerHTML = '<p style="color: #ef4444; font-size: 0.9rem;">Không thể tải bình luận.</p>';
+  }
+}
+
+async function sendUserComment() {
+  const input = document.getElementById('commentInput');
+  if (!input) return;
+  const content = input.value.trim();
+
+  if (!content) return alert('Vui lòng nhập nội dung bình luận!');
+  if (!userToken) {
+    alert('Vui lòng đăng nhập để bình luận!');
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/movies/${currentOpeningMovieId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify({ content })
+    });
+
+    const json = await res.json();
+    if (json.status === 'success') {
+      input.value = '';
+      loadMovieComments(currentOpeningMovieId);
+    } else {
+      alert(json.message || 'Không thể gửi bình luận.');
+    }
+  } catch (err) {
+    alert('Lỗi kết nối khi gửi bình luận.');
+  }
+}
+
+// ==========================================
+// 5. AUTH & KHỞI TẠO HỆ THỐNG
+// ==========================================
+function bindAuthButton() {
+  const loginBtn = document.getElementById('loginBtn');
+  const authModal = document.getElementById('authModal');
+  if (loginBtn && authModal) {
+    loginBtn.onclick = () => { authModal.style.display = 'block'; };
+  }
+}
+
+const closeAuthModal = document.getElementById('closeAuthModal');
+if (closeAuthModal) {
+  closeAuthModal.onclick = () => {
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.style.display = 'none';
+  };
+}
+
+function renderUserNav() {
+  const authNav = document.getElementById('authNav');
+  if (!authNav) return;
+
+  if (currentUser && userToken) {
+    authNav.innerHTML = `
+      <div class="user-badge">
+        <span>Xin chào, <strong>${currentUser.username}</strong></span>
+        ${currentUser.role === 'admin' ? '<a href="/admin" target="_blank"><button>Admin</button></a>' : ''}
+        <button onclick="logoutUser()">Đăng Xuất</button>
       </div>
-    </div>
-  </div>
+    `;
+  } else {
+    authNav.innerHTML = `
+      <button id="loginBtn" class="btn-primary">Đăng Nhập</button>
+      <a href="/admin" style="text-decoration: none;"><button>Trang Quản Trị</button></a>
+    `;
+    bindAuthButton();
+  }
+}
 
-  <!-- Modal Đăng Ký / Đăng Nhập -->
-  <div class="modal" id="authModal">
-    <div class="modal-content" style="max-width: 400px; padding: 25px;">
-      <button class="modal-close" id="closeAuthModal">&times;</button>
-      
-      <div class="auth-tabs">
-        <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Đăng Nhập</div>
-        <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Đăng Ký</div>
-      </div>
+function logoutUser() {
+  localStorage.removeItem('user_token');
+  localStorage.removeItem('user_info');
+  location.reload();
+}
 
-      <!-- Form Đăng Nhập -->
-      <form id="userLoginForm">
-        <div class="auth-form-group">
-          <label>Tên đăng nhập / Email</label>
-          <input type="text" id="loginUsername" required>
-        </div>
-        <div class="auth-form-group">
-          <label>Mật khẩu</label>
-          <input type="password" id="loginPassword" required>
-        </div>
-        <button type="submit" class="btn-auth-submit">Đăng Nhập</button>
-      </form>
+function switchAuthTab(type) {
+  const isLogin = type === 'login';
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const userLoginForm = document.getElementById('userLoginForm');
+  const userRegisterForm = document.getElementById('userRegisterForm');
 
-      <!-- Form Đăng Ký -->
-      <form id="userRegisterForm" style="display: none;">
-        <div class="auth-form-group">
-          <label>Tên đăng nhập</label>
-          <input type="text" id="regUsername" required>
-        </div>
-        <div class="auth-form-group">
-          <label>Email</label>
-          <input type="email" id="regEmail" required>
-        </div>
-        <div class="auth-form-group">
-          <label>Mật khẩu</label>
-          <input type="password" id="regPassword" required>
-        </div>
-        <button type="submit" class="btn-auth-submit">Đăng Ký Tài Khoản</button>
-      </form>
-    </div>
-  </div>
+  if (tabLogin) tabLogin.classList.toggle('active', isLogin);
+  if (tabRegister) tabRegister.classList.toggle('active', !isLogin);
+  if (userLoginForm) userLoginForm.style.display = isLogin ? 'block' : 'none';
+  if (userRegisterForm) userRegisterForm.style.display = isLogin ? 'none' : 'block';
+}
 
-  <!-- Thêm ?v=3.0 để ép điện thoại xóa sạch cache cũ -->
-  <script src="app.js?v=3.0"></script>
-</body>
-</html>
+const userRegisterForm = document.getElementById('userRegisterForm');
+if (userRegisterForm) {
+  userRegisterForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        alert('Đăng ký thành công! Vui lòng đăng nhập.');
+        switchAuthTab('login');
+        document.getElementById('loginUsername').value = username;
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Không thể kết nối đến máy chủ.');
+    }
+  };
+}
+
+const userLoginForm = document.getElementById('userLoginForm');
+if (userLoginForm) {
+  userLoginForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        localStorage.setItem('user_token', data.token);
+        localStorage.setItem('user_info', JSON.stringify(data.user));
+        userToken = data.token;
+        currentUser = data.user;
+        const authModal = document.getElementById('authModal');
+        if (authModal) authModal.style.display = 'none';
+        renderUserNav();
+        await loadUserFavorites();
+        loadMovies();
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Không thể kết nối đến máy chủ.');
+    }
+  };
+}
+
+// ==========================================
+// KHỞI CHẠY ĐỘC LẬP - BẢO VỆ LOAD PHIM
+// ==========================================
+window.addEventListener('DOMContentLoaded', () => {
+  renderUserNav();
+  loadGenres();
+  loadMovies();
+
+  if (userToken) {
+    loadUserFavorites();
+  }
+
+  const sendCommentBtn = document.getElementById('sendCommentBtn');
+  const commentInput = document.getElementById('commentInput');
+  if (sendCommentBtn) sendCommentBtn.addEventListener('click', sendUserComment);
+  if (commentInput) {
+    commentInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendUserComment();
+    });
+  }
+});
