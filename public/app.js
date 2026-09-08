@@ -237,6 +237,10 @@ async function openMovie(movieId) {
       document.getElementById('modalMovieTitle').textContent = movie.title;
       document.getElementById('modalMovieDesc').textContent = movie.description || 'Chưa có mô tả.';
 
+      // Cập nhật tiêu đề trên thanh điều khiển toàn màn hình nếu có
+      const fsTitle = document.getElementById('fsMovieTitle');
+      if (fsTitle) fsTitle.textContent = movie.title;
+
       const episodeList = document.getElementById('episodeList');
 
       if (currentMovieEpisodes.length > 0) {
@@ -277,10 +281,9 @@ const closeModalBtn = document.getElementById('closeModal');
 if (closeModalBtn) {
   closeModalBtn.addEventListener('click', () => {
     const modal = document.getElementById('playerModal');
-    const playerBox = document.getElementById('mainPlayerBox');
     
-    // Tắt full màn hình nếu đang bật khi đóng modal
-    if (playerBox) playerBox.classList.remove('css-fullscreen');
+    // Tắt toàn màn hình nếu đang bật khi đóng modal
+    document.body.classList.remove('is-fullscreen-mode');
     
     setVideoSource('');
     if (modal) modal.style.display = 'none';
@@ -585,46 +588,51 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH BẰNG CSS
+// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH NỔI (CHỐNG BỊ IFRAME ĐÈ)
 // ==========================================
 window.toggleCustomFullscreen = function() {
-  const playerBox = document.getElementById('mainPlayerBox');
+  const isFull = document.body.classList.toggle('is-fullscreen-mode');
   const btn = document.getElementById('btnFullscreen');
-  if (!playerBox) return;
+  const fsTitle = document.getElementById('fsMovieTitle');
+  const modalTitle = document.getElementById('modalMovieTitle');
 
-  playerBox.classList.toggle('css-fullscreen');
+  if (fsTitle && modalTitle) {
+    fsTitle.textContent = modalTitle.textContent;
+  }
 
-  if (playerBox.classList.contains('css-fullscreen')) {
-    if (btn) {
+  if (btn) {
+    if (isFull) {
       btn.innerHTML = '✕ Thu nhỏ màn hình';
       btn.style.background = '#4b5563';
-    }
-  } else {
-    if (btn) {
+    } else {
       btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
       btn.style.background = '#e50914';
     }
   }
 };
 
-// ==========================================
-// 7. BẮT PHÍM ESC CHO MÁY TÍNH
-// ==========================================
+// Thoát thẳng về trang chủ bất kể đang ở chế độ nào
+window.exitToHomeDirectly = function() {
+  document.body.classList.remove('is-fullscreen-mode');
+  const btn = document.getElementById('btnFullscreen');
+  if (btn) {
+    btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
+    btn.style.background = '#e50914';
+  }
+  const closeBtn = document.getElementById('closeModal');
+  if (closeBtn) closeBtn.click();
+};
+
+// Phím ESC trên máy tính
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    const playerBox = document.getElementById('mainPlayerBox');
-    const modal = document.getElementById('playerModal');
-
-    // 1. Nếu đang ở chế độ phóng to: thu nhỏ lại trước
-    if (playerBox && playerBox.classList.contains('css-fullscreen')) {
+    if (document.body.classList.contains('is-fullscreen-mode')) {
       window.toggleCustomFullscreen();
       return;
     }
-
-    // 2. Nếu đang xem bình thường: đóng modal về trang chủ
+    const modal = document.getElementById('playerModal');
     if (modal && modal.style.display === 'block') {
-      const closeBtn = document.getElementById('closeModal');
-      if (closeBtn) closeBtn.click();
+      window.exitToHomeDirectly();
     }
   }
 });

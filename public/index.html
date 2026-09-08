@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=102.0">
+  <link rel="stylesheet" href="style.css?v=105.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -14,11 +14,6 @@
       background: #000 !important;
       overflow: hidden !important;
       z-index: 10 !important;
-      pointer-events: auto !important;
-      touch-action: manipulation !important;
-      -webkit-touch-callout: none !important;
-      -webkit-user-select: none !important;
-      user-select: none !important;
     }
 
     .player-box video,
@@ -29,50 +24,43 @@
       width: 100% !important;
       height: 100% !important;
       border: none !important;
-      pointer-events: auto !important;
       display: block !important;
     }
 
-    /* Chế độ Fullscreen bằng CSS (Hoạt động hoàn hảo trên cả iPhone lẫn Android) */
-    .player-box.css-fullscreen {
+    /* THANH ĐIỀU KHIỂN NỔI KHI PHÓNG TO TOÀN MÀN HÌNH */
+    #fullscreenTopBar {
+      display: none;
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
       width: 100vw !important;
-      height: 100vh !important;
-      z-index: 999999 !important;
-      background: #000 !important;
-      border-radius: 0 !important;
-    }
-
-    /* NÚT THOÁT NỔI KHI PHÓNG TO TOÀN MÀN HÌNH */
-    .btn-exit-fullscreen {
+      height: 52px !important;
+      background: rgba(10, 10, 12, 0.95) !important;
+      backdrop-filter: blur(8px) !important;
+      z-index: 2147483647 !important; /* Mức cao nhất tuyệt đối */
       display: none;
-      position: absolute !important;
-      top: 16px !important;
-      right: 16px !important;
-      width: 42px !important;
-      height: 42px !important;
-      background: rgba(0, 0, 0, 0.75) !important;
-      color: #ffffff !important;
-      border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
-      border-radius: 50% !important;
-      font-size: 22px !important;
-      font-weight: bold !important;
-      align-items: center !important;
-      justify-content: center !important;
-      cursor: pointer !important;
-      z-index: 10000000 !important; /* Luôn nổi trên video */
-      box-shadow: 0 4px 10px rgba(0,0,0,0.6) !important;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      box-sizing: border-box;
     }
 
-    .player-box.css-fullscreen .btn-exit-fullscreen {
+    /* KHI Ở CHẾ ĐỘ FULLSCREEN BẰNG CSS */
+    body.is-fullscreen-mode #fullscreenTopBar {
       display: flex !important;
     }
 
-    /* Ẩn nút download mặc định */
-    video::-internal-media-controls-download-button { display: none !important; }
-    video::-webkit-media-controls-enclosure { overflow: hidden; }
+    body.is-fullscreen-mode .player-box#mainPlayerBox {
+      position: fixed !important;
+      top: 52px !important; /* Chừa khoảng trống 52px cho thanh trên cùng */
+      left: 0 !important;
+      width: 100vw !important;
+      height: calc(100vh - 52px) !important;
+      z-index: 2147483640 !important;
+      background: #000 !important;
+      aspect-ratio: unset !important;
+    }
 
     /* NÚT THOÁT VỀ TRANG CHỦ KHI XEM BÌNH THƯỜNG */
     .modal-close {
@@ -90,7 +78,7 @@
       font-size: 24px !important;
       line-height: 1 !important;
       border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
-      z-index: 100000 !important;
+      z-index: 1000 !important;
       cursor: pointer !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7) !important;
     }
@@ -142,29 +130,25 @@
         -webkit-overflow-scrolling: touch !important;
         padding: 14px 16px 30px !important;
       }
-
-      .modal#playerModal .movie-details h2 {
-        font-size: 1.25rem !important;
-        line-height: 1.4 !important;
-        margin-top: 4px !important;
-      }
-
-      .episode-list {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-        margin-top: 8px !important;
-      }
-
-      .episode-btn {
-        padding: 9px 15px !important;
-        font-size: 0.92rem !important;
-        border-radius: 6px !important;
-      }
     }
   </style>
 </head>
 <body>
+
+  <!-- THANH ĐIỀU KHIỂN NỔI KHI PHÓNG TO (KHÔNG BAO GIỜ BỊ VIDEO CHE KHUẤT) -->
+  <div id="fullscreenTopBar">
+    <span style="color: #fff; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+      🎬 <span id="fsMovieTitle">Đang xem phim</span>
+    </span>
+    <div style="display: flex; gap: 10px;">
+      <button type="button" onclick="toggleCustomFullscreen()" style="background: #374151; color: #fff; border: 1px solid #4b5563; padding: 7px 14px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; cursor: pointer;">
+        ✕ Thu nhỏ
+      </button>
+      <button type="button" onclick="exitToHomeDirectly()" style="background: #e50914; color: #fff; border: none; padding: 7px 14px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; cursor: pointer;">
+        🏠 Về Trang Chủ
+      </button>
+    </div>
+  </div>
 
   <!-- Thanh Menu -->
   <header>
@@ -202,8 +186,6 @@
       
       <!-- Khung phát video -->
       <div class="player-box" id="mainPlayerBox">
-        <!-- Nút thoát nhanh khi đang phóng to toàn màn hình -->
-        <button type="button" class="btn-exit-fullscreen" onclick="toggleCustomFullscreen()" title="Thu nhỏ (hoặc nhấn ESC)">✕</button>
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
@@ -228,7 +210,6 @@
             💬 Bình luận (<span id="commentCount">0</span>)
           </h3>
 
-          <!-- Form gửi bình luận -->
           <div id="commentFormContainer" style="margin-bottom: 18px;">
             <div style="display: flex; gap: 10px;">
               <input type="text" id="commentInput" placeholder="Chia sẻ cảm nghĩ của bạn về bộ phim này..." style="flex: 1; padding: 11px 15px; background: #1f2937; border: 1px solid #374151; color: #fff; border-radius: 8px; outline: none; font-size: 0.95rem;">
@@ -236,12 +217,10 @@
             </div>
           </div>
 
-          <!-- Nhắc đăng nhập -->
           <div id="commentLoginNotice" style="display: none; color: #9ca3af; margin-bottom: 16px; background: #18181b; padding: 12px 16px; border-radius: 8px; border: 1px dashed #3f3f46;">
             Vui lòng <span onclick="document.getElementById('authModal').style.display='block'" style="color: #e50914; cursor: pointer; text-decoration: underline; font-weight: bold;">Đăng Nhập</span> để tham gia bình luận cùng mọi người.
           </div>
 
-          <!-- Danh sách bình luận -->
           <div id="commentList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
             <p style="color: #9ca3af; font-size: 0.9rem;">Đang tải bình luận...</p>
           </div>
@@ -292,6 +271,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=102.0"></script>
+  <script src="app.js?v=105.0"></script>
 </body>
 </html>
