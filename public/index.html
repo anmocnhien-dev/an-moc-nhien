@@ -2,9 +2,48 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Tối ưu hóa vùng phát video chống liệt cảm ứng trên điện thoại */
+    .player-box {
+      position: relative !important;
+      width: 100% !important;
+      aspect-ratio: 16 / 9 !important;
+      background: #000 !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+      z-index: 10 !important;
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+    }
+
+    .player-box video,
+    .player-box iframe {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      pointer-events: auto !important;
+      display: block !important;
+    }
+
+    /* Modal xem phim trên điện thoại */
+    @media (max-width: 768px) {
+      .modal-content {
+        width: 96% !important;
+        margin: 10px auto !important;
+        padding: 12px !important;
+        border-radius: 10px !important;
+      }
+      .player-box {
+        margin-top: 25px; /* Tránh bị nút đóng đè lên góc phát */
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -42,7 +81,7 @@
     <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
       <button class="modal-close" id="closeModal">&times;</button>
       <div class="player-box">
-        <video id="videoPlayer" controls autoplay></video>
+        <video id="videoPlayer" controls autoplay playsinline webkit-playsinline></video>
       </div>
       <div class="movie-details">
         <h2 id="modalMovieTitle">Tên Phim</h2>
