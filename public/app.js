@@ -585,7 +585,7 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// 6. CÁC HÀM XỬ LÝ NÚT TOÀN MÀN HÌNH & MỞ TAB (DÀNH CHO MOBILE)
+// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH BẰNG CSS
 // ==========================================
 window.toggleCustomFullscreen = function() {
   const playerBox = document.getElementById('mainPlayerBox');
@@ -607,22 +607,27 @@ window.toggleCustomFullscreen = function() {
   }
 };
 
-window.openVideoInNewTab = function() {
-  let targetUrl = window.currentPlayingUrl;
+// ==========================================
+// 7. BẮT PHÍM ESC CHO MÁY TÍNH
+// ==========================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const playerBox = document.getElementById('mainPlayerBox');
+    const modal = document.getElementById('playerModal');
 
-  if (!targetUrl) {
-    const iframe = document.querySelector('#mainPlayerBox iframe');
-    const video = document.querySelector('#mainPlayerBox video');
-    targetUrl = iframe ? iframe.src : (video ? video.src : '');
-  }
+    // 1. Nếu đang ở chế độ phóng to: thu nhỏ lại trước
+    if (playerBox && playerBox.classList.contains('css-fullscreen')) {
+      window.toggleCustomFullscreen();
+      return;
+    }
 
-  if (targetUrl) {
-    // Đảm bảo nếu là Google Drive preview thì mở link preview hoặc link xem
-    window.open(targetUrl, '_blank');
-  } else {
-    alert('Chưa có link video để mở!');
+    // 2. Nếu đang xem bình thường: đóng modal về trang chủ
+    if (modal && modal.style.display === 'block') {
+      const closeBtn = document.getElementById('closeModal');
+      if (closeBtn) closeBtn.click();
+    }
   }
-};
+});
 
 // ==========================================
 // KHỞI CHẠY HỆ THỐNG
