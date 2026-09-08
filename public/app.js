@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.0">
   <style>
-    /* Tối ưu hóa vùng phát video chống liệt cảm ứng trên điện thoại */
+    /* Khung phát video chống đè vùng cảm ứng và chuẩn tỉ lệ 16:9 */
     .player-box {
       position: relative !important;
       width: 100% !important;
@@ -17,6 +17,9 @@
       z-index: 10 !important;
       pointer-events: auto !important;
       touch-action: manipulation !important;
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
     }
 
     .player-box video,
@@ -31,16 +34,24 @@
       display: block !important;
     }
 
-    /* Modal xem phim trên điện thoại */
+    /* Ẩn nút download mặc định trên các trình duyệt di động */
+    video::-internal-media-controls-download-button {
+      display: none !important;
+    }
+    video::-webkit-media-controls-enclosure {
+      overflow: hidden;
+    }
+
+    /* Tinh chỉnh modal vừa vặn trên màn hình điện thoại */
     @media (max-width: 768px) {
       .modal-content {
-        width: 96% !important;
+        width: 95% !important;
         margin: 10px auto !important;
         padding: 12px !important;
         border-radius: 10px !important;
       }
       .player-box {
-        margin-top: 25px; /* Tránh bị nút đóng đè lên góc phát */
+        margin-top: 28px;
       }
     }
   </style>
@@ -81,7 +92,15 @@
     <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
       <button class="modal-close" id="closeModal">&times;</button>
       <div class="player-box">
-        <video id="videoPlayer" controls autoplay playsinline webkit-playsinline></video>
+        <video 
+          id="videoPlayer" 
+          controls 
+          autoplay 
+          playsinline 
+          webkit-playsinline 
+          controlsList="nodownload" 
+          oncontextmenu="return false;">
+        </video>
       </div>
       <div class="movie-details">
         <h2 id="modalMovieTitle">Tên Phim</h2>
@@ -96,7 +115,7 @@
             💬 Bình luận (<span id="commentCount">0</span>)
           </h3>
 
-          <!-- Form gửi bình luận (dành cho user đã đăng nhập) -->
+          <!-- Form gửi bình luận -->
           <div id="commentFormContainer" style="margin-bottom: 18px;">
             <div style="display: flex; gap: 10px;">
               <input type="text" id="commentInput" placeholder="Chia sẻ cảm nghĩ của bạn về bộ phim này..." style="flex: 1; padding: 11px 15px; background: #1f2937; border: 1px solid #374151; color: #fff; border-radius: 8px; outline: none; font-size: 0.95rem;">
@@ -104,12 +123,12 @@
             </div>
           </div>
 
-          <!-- Thông báo nhắc đăng nhập nếu là khách -->
+          <!-- Nhắc đăng nhập cho khách -->
           <div id="commentLoginNotice" style="display: none; color: #9ca3af; margin-bottom: 16px; background: #18181b; padding: 12px 16px; border-radius: 8px; border: 1px dashed #3f3f46;">
             Vui lòng <span onclick="document.getElementById('authModal').style.display='block'" style="color: #e50914; cursor: pointer; text-decoration: underline; font-weight: bold;">Đăng Nhập</span> để tham gia bình luận cùng mọi người.
           </div>
 
-          <!-- Danh sách hiển thị các bình luận -->
+          <!-- Danh sách bình luận -->
           <div id="commentList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
             <p style="color: #9ca3af; font-size: 0.9rem;">Đang tải bình luận...</p>
           </div>
@@ -160,6 +179,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Thêm ?v=3.0 để ép điện thoại xóa sạch cache cũ -->
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>
