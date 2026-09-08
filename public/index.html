@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=101.0">
+  <link rel="stylesheet" href="style.css?v=102.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -45,11 +45,36 @@
       border-radius: 0 !important;
     }
 
+    /* NÚT THOÁT NỔI KHI PHÓNG TO TOÀN MÀN HÌNH */
+    .btn-exit-fullscreen {
+      display: none;
+      position: absolute !important;
+      top: 16px !important;
+      right: 16px !important;
+      width: 42px !important;
+      height: 42px !important;
+      background: rgba(0, 0, 0, 0.75) !important;
+      color: #ffffff !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+      border-radius: 50% !important;
+      font-size: 22px !important;
+      font-weight: bold !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      z-index: 10000000 !important; /* Luôn nổi trên video */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6) !important;
+    }
+
+    .player-box.css-fullscreen .btn-exit-fullscreen {
+      display: flex !important;
+    }
+
     /* Ẩn nút download mặc định */
     video::-internal-media-controls-download-button { display: none !important; }
     video::-webkit-media-controls-enclosure { overflow: hidden; }
 
-    /* NÚT THOÁT VỀ TRANG CHỦ - NỔI TRÊN GÓC VÀ KHÔNG BỊ VIDEO ĐÈ */
+    /* NÚT THOÁT VỀ TRANG CHỦ KHI XEM BÌNH THƯỜNG */
     .modal-close {
       position: absolute !important;
       top: 10px !important;
@@ -172,11 +197,13 @@
   <!-- Modal Trình Xem Phim -->
   <div class="modal" id="playerModal">
     <div class="modal-content">
-      <!-- Nút thoát quay về trang chủ (Đã đẩy z-index cao để bấm dễ dàng) -->
+      <!-- Nút thoát quay về trang chủ khi xem thông thường -->
       <button class="modal-close" id="closeModal" title="Đóng về trang chủ">&times;</button>
       
       <!-- Khung phát video -->
       <div class="player-box" id="mainPlayerBox">
+        <!-- Nút thoát nhanh khi đang phóng to toàn màn hình -->
+        <button type="button" class="btn-exit-fullscreen" onclick="toggleCustomFullscreen()" title="Thu nhỏ (hoặc nhấn ESC)">✕</button>
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
@@ -265,6 +292,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=101.0"></script>
+  <script src="app.js?v=102.0"></script>
 </body>
 </html>
