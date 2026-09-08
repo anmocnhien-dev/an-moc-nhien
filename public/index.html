@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=8.0">
+  <link rel="stylesheet" href="style.css?v=9.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -31,6 +31,18 @@
       border: none !important;
       pointer-events: auto !important;
       display: block !important;
+    }
+
+    /* Chế độ Fullscreen bằng CSS (Hoạt động hoàn hảo trên cả iPhone lẫn Android) */
+    .player-box.css-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 999999 !important;
+      background: #000 !important;
+      border-radius: 0 !important;
     }
 
     /* Ẩn nút download mặc định */
@@ -120,7 +132,7 @@
 </head>
 <body>
 
-  <!-- Thanh Menu -->
+  <!-- Thanh Menu: Đã giấu link Admin, chỉ hiển thị nút Đăng Nhập -->
   <header>
     <a href="/" class="logo">🎬 AN MỘC NHIÊN</a>
     
@@ -131,7 +143,6 @@
 
     <div class="auth-nav" id="authNav">
       <button id="loginBtn" class="btn-primary">Đăng Nhập</button>
-      <a href="/admin" style="text-decoration: none;"><button>Trang Quản Trị</button></a>
     </div>
   </header>
 
@@ -159,11 +170,13 @@
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
-      <!-- Thanh nút bấm phóng to nhanh cho điện thoại -->
-      <div style="background: #14161d; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a;">
-        <span style="font-size: 0.85rem; color: #9ca3af;">Chế độ phát: Chuẩn 16:9</span>
-        <button id="btnFullscreen" type="button" style="background: #e50914; color: #ffffff; border: none; padding: 7px 15px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-          ⛶ Phóng to màn hình
+      <!-- Thanh nút điều khiển phóng to / mở tab riêng chuẩn cho iPhone & Android -->
+      <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; gap: 10px;">
+        <button id="btnFullscreen" type="button" style="flex: 1; background: #e50914; color: #ffffff; border: none; padding: 9px 12px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+          ⛶ Phóng to / Thu nhỏ
+        </button>
+        <button id="btnOpenNative" type="button" style="background: #2563eb; color: #ffffff; border: none; padding: 9px 12px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+          Mở Tab Riêng ↗
         </button>
       </div>
 
@@ -244,6 +257,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.0"></script>
+  <script src="app.js?v=9.0"></script>
 </body>
 </html>
