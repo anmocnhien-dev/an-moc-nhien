@@ -90,22 +90,25 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Đăng nhập
+// Đăng nhập (Hỗ trợ cả Username và Email, không phân biệt hoa/thường)
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
-    return res.status(400).json({ status: 'error', message: 'Vui lòng nhập tên tài khoản và mật khẩu.' });
+    return res.status(400).json({ status: 'error', message: 'Vui lòng nhập tên tài khoản/email và mật khẩu.' });
   }
 
+  const cleanLogin = username.trim().toLowerCase();
+
+  // Dùng LOWER() để đối chiếu chữ thường cho cả username và email
   db.get(
-    `SELECT * FROM users WHERE username = ? OR email = ?`,
-    [username.trim(), username.trim().toLowerCase()],
+    `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?`,
+    [cleanLogin, cleanLogin],
     async (err, user) => {
       if (err) {
         return res.status(500).json({ status: 'error', message: 'Lỗi truy vấn: ' + err.message });
       }
       if (!user) {
-        return res.status(400).json({ status: 'error', message: 'Tài khoản không tồn tại.' });
+        return res.status(400).json({ status: 'error', message: 'Tài khoản hoặc email không tồn tại.' });
       }
       if (user.is_locked === 1) {
         return res.status(403).json({ status: 'error', message: 'Tài khoản của bạn đã bị khóa.' });
