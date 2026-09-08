@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=6.0">
+  <link rel="stylesheet" href="style.css?v=8.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -153,9 +153,20 @@
   <div class="modal" id="playerModal">
     <div class="modal-content">
       <button class="modal-close" id="closeModal">&times;</button>
-      <div class="player-box">
+      
+      <!-- Khung phát video -->
+      <div class="player-box" id="mainPlayerBox">
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
+
+      <!-- Thanh nút bấm phóng to nhanh cho điện thoại -->
+      <div style="background: #14161d; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a;">
+        <span style="font-size: 0.85rem; color: #9ca3af;">Chế độ phát: Chuẩn 16:9</span>
+        <button id="btnFullscreen" type="button" style="background: #e50914; color: #ffffff; border: none; padding: 7px 15px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+          ⛶ Phóng to màn hình
+        </button>
+      </div>
+
       <div class="movie-details">
         <h2 id="modalMovieTitle">Tên Phim</h2>
         <p id="modalMovieDesc" style="color: var(--text-muted); margin: 10px 0;"></p>
@@ -233,6 +244,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=6.0"></script>
+  <script src="app.js?v=8.0"></script>
 </body>
 </html>
