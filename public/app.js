@@ -5,6 +5,10 @@ let currentUser = JSON.parse(localStorage.getItem('user_info') || 'null');
 let favoriteMovieIds = [];
 let currentOpeningMovieId = null;
 
+// Biến lưu danh sách tập và vị trí tập đang phát
+let currentMovieEpisodes = [];
+let currentEpisodeIndex = 0;
+
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
 // ==========================================
@@ -121,10 +125,9 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM, CHỌN TẬP & MỞ BÌNH LUẬN
+// 2. PHÁT PHIM, CHỌN TẬP & TỰ ĐỘNG CHUYỂN TẬP
 // ==========================================
 
-// Hàm chuyển đổi thông minh giữa Iframe (Drive) và Video thẻ (Cloudinary/MP4)
 function setVideoSource(url) {
   let player = document.getElementById('videoPlayer');
   if (!player) return;
@@ -154,7 +157,6 @@ function setVideoSource(url) {
       }
     }
 
-    // Nếu đang là thẻ video thì chuyển thành thẻ iframe
     if (player.tagName.toLowerCase() !== 'iframe') {
       const iframe = document.createElement('iframe');
       iframe.id = 'videoPlayer';
@@ -168,7 +170,7 @@ function setVideoSource(url) {
     }
     player.src = embedUrl;
   } else {
-    // Nếu là file video MP4 thông thường hoặc Cloudinary
+    // Nếu là file video MP4 / Cloudinary
     if (player.tagName.toLowerCase() !== 'video') {
       const video = document.createElement('video');
       video.id = 'videoPlayer';
@@ -179,7 +181,19 @@ function setVideoSource(url) {
       player.parentNode.replaceChild(video, player);
       player = video;
     }
+
     player.src = url;
+
+    // TỰ ĐỘNG CHUYỂN TẬP KHI PHÁT XONG
+    player.onended = () => {
+      if (currentEpisodeIndex + 1 < currentMovieEpisodes.length) {
+        currentEpisodeIndex++;
+        const nextEpisode = currentMovieEpisodes[currentEpisodeIndex];
+        const allBtns = document.querySelectorAll('.episode-btn');
+        playEpisode(nextEpisode.video_url, allBtns[currentEpisodeIndex], currentEpisodeIndex);
+      }
+    };
+
     player.play().catch(() => {});
   }
 }
@@ -192,20 +206,22 @@ async function openMovie(movieId) {
     if (json.status === 'success') {
       const movie = json.data;
       currentOpeningMovieId = movie.id;
+      currentMovieEpisodes = movie.episodes || [];
+      currentEpisodeIndex = 0;
 
       document.getElementById('modalMovieTitle').textContent = movie.title;
       document.getElementById('modalMovieDesc').textContent = movie.description || 'Chưa có mô tả.';
 
       const episodeList = document.getElementById('episodeList');
 
-      if (movie.episodes && movie.episodes.length > 0) {
-        episodeList.innerHTML = movie.episodes.map((ep, idx) => `
-          <button class="episode-btn ${idx === 0 ? 'active' : ''}" onclick="playEpisode('${ep.video_url}', this)">
+      if (currentMovieEpisodes.length > 0) {
+        episodeList.innerHTML = currentMovieEpisodes.map((ep, idx) => `
+          <button class="episode-btn ${idx === 0 ? 'active' : ''}" onclick="playEpisode('${ep.video_url}', this, ${idx})">
             ${ep.title || 'Tập ' + ep.episode_number}
           </button>
         `).join('');
 
-        setVideoSource(movie.episodes[0].video_url);
+        setVideoSource(currentMovieEpisodes[0].video_url);
       } else {
         episodeList.innerHTML = '<p style="color: #9ca3af;">Phim chưa cập nhật tập nào.</p>';
         setVideoSource('');
@@ -224,7 +240,10 @@ async function openMovie(movieId) {
   }
 }
 
-function playEpisode(url, btn) {
+function playEpisode(url, btn, idx) {
+  if (typeof idx === 'number') {
+    currentEpisodeIndex = idx;
+  }
   setVideoSource(url);
   document.querySelectorAll('.episode-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -235,6 +254,8 @@ document.getElementById('closeModal').addEventListener('click', () => {
   setVideoSource(''); // Dừng phát hoàn toàn
   modal.style.display = 'none';
   currentOpeningMovieId = null;
+  currentMovieEpisodes = [];
+  currentEpisodeIndex = 0;
 });
 
 document.getElementById('searchBtn').addEventListener('click', () => {
