@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=99.0">
+  <link rel="stylesheet" href="style.css?v=101.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -49,24 +49,25 @@
     video::-internal-media-controls-download-button { display: none !important; }
     video::-webkit-media-controls-enclosure { overflow: hidden; }
 
-    /* NÚT THOÁT VỀ TRANG CHỦ NỔI BẬT */
+    /* NÚT THOÁT VỀ TRANG CHỦ - NỔI TRÊN GÓC VÀ KHÔNG BỊ VIDEO ĐÈ */
     .modal-close {
       position: absolute !important;
-      top: 12px !important;
+      top: 10px !important;
       right: 12px !important;
-      width: 40px !important;
-      height: 40px !important;
-      background: rgba(0, 0, 0, 0.8) !important;
+      width: 38px !important;
+      height: 38px !important;
+      background: rgba(15, 17, 21, 0.9) !important;
       color: #ffffff !important;
       border-radius: 50% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
       font-size: 24px !important;
-      border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
-      z-index: 1000 !important;
+      line-height: 1 !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+      z-index: 100000 !important;
       cursor: pointer !important;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7) !important;
     }
 
     .modal-close:hover {
@@ -171,7 +172,7 @@
   <!-- Modal Trình Xem Phim -->
   <div class="modal" id="playerModal">
     <div class="modal-content">
-      <!-- Nút thoát quay về trang chủ -->
+      <!-- Nút thoát quay về trang chủ (Đã đẩy z-index cao để bấm dễ dàng) -->
       <button class="modal-close" id="closeModal" title="Đóng về trang chủ">&times;</button>
       
       <!-- Khung phát video -->
@@ -179,7 +180,7 @@
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
-      <!-- Thanh nút điều khiển phóng to trực tiếp (Không mở tab rời) -->
+      <!-- Thanh nút điều khiển trực tiếp trên web -->
       <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; position: relative; z-index: 9999;">
         <span style="font-size: 0.85rem; color: #9ca3af;">Chế độ xem: Trực tiếp</span>
         <button id="btnFullscreen" type="button" onclick="toggleCustomFullscreen()" style="background: #e50914; color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
@@ -264,6 +265,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=100.0"></script>
+  <script src="app.js?v=101.0"></script>
 </body>
 </html>
