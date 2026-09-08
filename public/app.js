@@ -8,7 +8,7 @@ let currentOpeningMovieId = null;
 // Biến lưu danh sách tập và vị trí tập đang phát
 let currentMovieEpisodes = [];
 let currentEpisodeIndex = 0;
-let isSwitchingEpisode = false; // Cờ chống chuyển tập lặp lại
+let isSwitchingEpisode = false;
 
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
@@ -126,7 +126,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM, CHỌN TẬP & TỰ ĐỘNG CHUYỂN TẬP
+// 2. PHÁT PHIM, CHỌN TẬP & ĐIỀU HƯỚNG TẬP
 // ==========================================
 
 // Hàm chuyển tập tiếp theo an toàn
@@ -138,13 +138,13 @@ function playNextEpisode() {
     const nextEpisode = currentMovieEpisodes[currentEpisodeIndex];
     const allBtns = document.querySelectorAll('.episode-btn');
     
-    console.log('Tự động chuyển sang tập:', nextEpisode.title || currentEpisodeIndex + 1);
     playEpisode(nextEpisode.video_url, allBtns[currentEpisodeIndex], currentEpisodeIndex);
     
-    // Mở lại cờ sau khi chuyển
     setTimeout(() => {
       isSwitchingEpisode = false;
-    }, 1500);
+    }, 1200);
+  } else {
+    alert('Bạn đang xem tập mới nhất của bộ phim này rồi!');
   }
 }
 
@@ -162,7 +162,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // Nếu là đường dẫn Google Drive
+  // Nếu là Google Drive
   if (url.includes('drive.google.com')) {
     let embedUrl = url;
     if (url.includes('/file/d/')) {
@@ -202,18 +202,15 @@ function setVideoSource(url) {
       player = video;
     }
 
-    // Reset sự kiện cũ
     player.onended = null;
     player.ontimeupdate = null;
 
     player.src = url;
 
-    // 1. Sự kiện khi phát xong video
     player.onended = () => {
       playNextEpisode();
     };
 
-    // 2. Cơ chế dự phòng: kiểm tra thời gian nếu còn dưới 0.3 giây mà dừng
     player.ontimeupdate = () => {
       if (player.duration && player.currentTime > 0) {
         if (player.duration - player.currentTime <= 0.3) {
@@ -222,9 +219,8 @@ function setVideoSource(url) {
       }
     };
 
-    // Tự động phát
     player.play().catch(err => {
-      console.warn('Trình duyệt tạm dừng autoplay (có thể cần click để tiếp tục):', err);
+      console.warn('Trình duyệt chặn autoplay:', err);
     });
   }
 }
@@ -247,7 +243,12 @@ async function openMovie(movieId) {
       const episodeList = document.getElementById('episodeList');
 
       if (currentMovieEpisodes.length > 0) {
-        episodeList.innerHTML = currentMovieEpisodes.map((ep, idx) => `
+        // Nút Tập Tiếp Theo hiển thị nếu phim có từ 2 tập trở lên
+        const quickNextBtnHtml = currentMovieEpisodes.length > 1
+          ? `<div style="margin-bottom: 12px;"><button type="button" onclick="playNextEpisode()" style="background: #2563eb; color: #ffffff; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">Tập Tiếp Theo ▶</button></div>`
+          : '';
+
+        episodeList.innerHTML = quickNextBtnHtml + currentMovieEpisodes.map((ep, idx) => `
           <button class="episode-btn ${idx === 0 ? 'active' : ''}" onclick="playEpisode('${ep.video_url}', this, ${idx})">
             ${ep.title || 'Tập ' + ep.episode_number}
           </button>
