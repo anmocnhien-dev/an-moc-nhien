@@ -49,6 +49,31 @@
     video::-internal-media-controls-download-button { display: none !important; }
     video::-webkit-media-controls-enclosure { overflow: hidden; }
 
+    /* NÚT THOÁT VỀ TRANG CHỦ NỔI BẬT */
+    .modal-close {
+      position: absolute !important;
+      top: 12px !important;
+      right: 12px !important;
+      width: 40px !important;
+      height: 40px !important;
+      background: rgba(0, 0, 0, 0.8) !important;
+      color: #ffffff !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 24px !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+      z-index: 1000 !important;
+      cursor: pointer !important;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .modal-close:hover {
+      background: #e50914 !important;
+      border-color: #e50914 !important;
+    }
+
     /* GIAO DIỆN MOBILE DẠNG APP FULL MÀN HÌNH */
     @media (max-width: 768px) {
       .modal#playerModal {
@@ -83,23 +108,6 @@
         aspect-ratio: 16 / 9 !important;
         border-radius: 0 !important;
         margin: 0 !important;
-      }
-
-      .modal#playerModal .modal-close {
-        top: 12px !important;
-        right: 12px !important;
-        width: 36px !important;
-        height: 36px !important;
-        background: rgba(0, 0, 0, 0.75) !important;
-        color: #ffffff !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 22px !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        z-index: 100 !important;
-        cursor: pointer !important;
       }
 
       .modal#playerModal .movie-details {
@@ -163,20 +171,19 @@
   <!-- Modal Trình Xem Phim -->
   <div class="modal" id="playerModal">
     <div class="modal-content">
-      <button class="modal-close" id="closeModal">&times;</button>
+      <!-- Nút thoát quay về trang chủ -->
+      <button class="modal-close" id="closeModal" title="Đóng về trang chủ">&times;</button>
       
       <!-- Khung phát video -->
       <div class="player-box" id="mainPlayerBox">
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
-      <!-- Thanh nút điều khiển phóng to / mở tab riêng có onclick trực tiếp -->
-      <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; gap: 10px; position: relative; z-index: 9999;">
-        <button id="btnFullscreen" type="button" onclick="toggleCustomFullscreen()" style="flex: 1; background: #e50914; color: #ffffff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+      <!-- Thanh nút điều khiển phóng to trực tiếp (Không mở tab rời) -->
+      <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; position: relative; z-index: 9999;">
+        <span style="font-size: 0.85rem; color: #9ca3af;">Chế độ xem: Trực tiếp</span>
+        <button id="btnFullscreen" type="button" onclick="toggleCustomFullscreen()" style="background: #e50914; color: #ffffff; border: none; padding: 9px 18px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
           ⛶ Phóng to / Thu nhỏ
-        </button>
-        <button id="btnOpenNative" type="button" onclick="openVideoInNewTab()" style="background: #2563eb; color: #ffffff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
-          Mở Tab Riêng ↗
         </button>
       </div>
 
@@ -257,6 +264,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=99.0"></script>
+  <script src="app.js?v=100.0"></script>
 </body>
 </html>
