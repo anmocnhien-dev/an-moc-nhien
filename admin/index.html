@@ -16,17 +16,27 @@
     </div>
   </div>
 
-  <!-- Form Đăng Nhập Quản Trị -->
+  <!-- Form Đăng Nhập Quản Trị (Đã xóa vĩnh viễn tài khoản & mật khẩu điền sẵn) -->
   <div id="loginSection" class="login-box">
     <h2>Đăng Nhập Quản Trị</h2>
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="off">
       <div class="form-group">
         <label>Tài khoản</label>
-        <input type="text" id="adminUser" value="admin" required>
+        <input 
+          type="text" 
+          id="adminUser" 
+          placeholder="Nhập tài khoản quản trị..." 
+          autocomplete="off" 
+          required>
       </div>
       <div class="form-group">
         <label>Mật khẩu</label>
-        <input type="password" id="adminPass" value="Admin@123456" required>
+        <input 
+          type="password" 
+          id="adminPass" 
+          placeholder="Nhập mật khẩu..." 
+          autocomplete="new-password" 
+          required>
       </div>
       <button type="submit" class="btn-submit">Đăng Nhập</button>
     </form>
@@ -123,6 +133,6 @@
 
   </div>
 
-  <script src="admin.js"></script>
+  <script src="admin.js?v=2.0"></script>
 </body>
 </html>
