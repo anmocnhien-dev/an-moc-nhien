@@ -22,6 +22,9 @@ let currentMovieEpisodes = [];
 let currentEpisodeIndex = 0;
 let isSwitchingEpisode = false;
 
+// Biến lưu URL video đang phát hiện tại
+window.currentPlayingUrl = '';
+
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
 // ==========================================
@@ -168,6 +171,7 @@ function playNextEpisode() {
 }
 
 function setVideoSource(url) {
+  window.currentPlayingUrl = url || '';
   const playerBox = document.querySelector('.player-box');
   if (!playerBox) return;
 
@@ -273,6 +277,11 @@ const closeModalBtn = document.getElementById('closeModal');
 if (closeModalBtn) {
   closeModalBtn.addEventListener('click', () => {
     const modal = document.getElementById('playerModal');
+    const playerBox = document.getElementById('mainPlayerBox');
+    
+    // Tắt full màn hình nếu đang bật khi đóng modal
+    if (playerBox) playerBox.classList.remove('css-fullscreen');
+    
     setVideoSource('');
     if (modal) modal.style.display = 'none';
     currentOpeningMovieId = null;
@@ -476,17 +485,20 @@ function renderUserNav() {
   if (!authNav) return;
 
   if (currentUser && userToken) {
+    const adminButton = (currentUser.role === 'admin')
+      ? `<a href="/admin" target="_blank" style="text-decoration: none;"><button style="background: #e50914; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 6px;">Quản Trị</button></a>`
+      : '';
+
     authNav.innerHTML = `
-      <div class="user-badge">
-        <span>Xin chào, <strong>${currentUser.username}</strong></span>
-        ${currentUser.role === 'admin' ? '<a href="/admin" target="_blank"><button>Admin</button></a>' : ''}
-        <button onclick="logoutUser()">Đăng Xuất</button>
+      <div class="user-badge" style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #e4e4e7; font-size: 0.9rem;">Chào, <strong>${currentUser.username}</strong></span>
+        ${adminButton}
+        <button onclick="logoutUser()" style="background: #27272a; color: #f43f5e; border: 1px solid #3f3f46; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Đăng Xuất</button>
       </div>
     `;
   } else {
     authNav.innerHTML = `
       <button id="loginBtn" class="btn-primary">Đăng Nhập</button>
-      <a href="/admin" style="text-decoration: none;"><button>Trang Quản Trị</button></a>
     `;
     bindAuthButton();
   }
@@ -573,7 +585,47 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// KHỞI CHẠY ĐỘC LẬP - BẢO VỆ LOAD PHIM
+// 6. CÁC HÀM XỬ LÝ NÚT TOÀN MÀN HÌNH & MỞ TAB (DÀNH CHO MOBILE)
+// ==========================================
+window.toggleCustomFullscreen = function() {
+  const playerBox = document.getElementById('mainPlayerBox');
+  const btn = document.getElementById('btnFullscreen');
+  if (!playerBox) return;
+
+  playerBox.classList.toggle('css-fullscreen');
+
+  if (playerBox.classList.contains('css-fullscreen')) {
+    if (btn) {
+      btn.innerHTML = '✕ Thu nhỏ màn hình';
+      btn.style.background = '#4b5563';
+    }
+  } else {
+    if (btn) {
+      btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
+      btn.style.background = '#e50914';
+    }
+  }
+};
+
+window.openVideoInNewTab = function() {
+  let targetUrl = window.currentPlayingUrl;
+
+  if (!targetUrl) {
+    const iframe = document.querySelector('#mainPlayerBox iframe');
+    const video = document.querySelector('#mainPlayerBox video');
+    targetUrl = iframe ? iframe.src : (video ? video.src : '');
+  }
+
+  if (targetUrl) {
+    // Đảm bảo nếu là Google Drive preview thì mở link preview hoặc link xem
+    window.open(targetUrl, '_blank');
+  } else {
+    alert('Chưa có link video để mở!');
+  }
+};
+
+// ==========================================
+// KHỞI CHẠY HỆ THỐNG
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
   renderUserNav();
@@ -582,29 +634,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (userToken) {
     loadUserFavorites();
-  }
-
-  // Xử lý phóng to toàn màn hình cho mobile
-  const btnFullscreen = document.getElementById('btnFullscreen');
-  if (btnFullscreen) {
-    btnFullscreen.addEventListener('click', () => {
-      const playerBox = document.getElementById('mainPlayerBox');
-      if (!playerBox) return;
-
-      const videoElement = playerBox.querySelector('video') || playerBox.querySelector('iframe');
-      const target = videoElement || playerBox;
-
-      if (target.requestFullscreen) {
-        target.requestFullscreen();
-      } else if (target.webkitRequestFullscreen) {
-        target.webkitRequestFullscreen();
-      } else if (target.webkitEnterFullscreen) {
-        // Hỗ trợ video trên iOS Safari
-        target.webkitEnterFullscreen();
-      } else if (playerBox.requestFullscreen) {
-        playerBox.requestFullscreen();
-      }
-    });
   }
 
   const sendCommentBtn = document.getElementById('sendCommentBtn');

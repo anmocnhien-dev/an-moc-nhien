@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=9.0">
+  <link rel="stylesheet" href="style.css?v=99.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -132,7 +132,7 @@
 </head>
 <body>
 
-  <!-- Thanh Menu: Đã giấu link Admin, chỉ hiển thị nút Đăng Nhập -->
+  <!-- Thanh Menu -->
   <header>
     <a href="/" class="logo">🎬 AN MỘC NHIÊN</a>
     
@@ -170,12 +170,12 @@
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
 
-      <!-- Thanh nút điều khiển phóng to / mở tab riêng chuẩn cho iPhone & Android -->
-      <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; gap: 10px;">
-        <button id="btnFullscreen" type="button" style="flex: 1; background: #e50914; color: #ffffff; border: none; padding: 9px 12px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+      <!-- Thanh nút điều khiển phóng to / mở tab riêng có onclick trực tiếp -->
+      <div style="background: #14161d; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; gap: 10px; position: relative; z-index: 9999;">
+        <button id="btnFullscreen" type="button" onclick="toggleCustomFullscreen()" style="flex: 1; background: #e50914; color: #ffffff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
           ⛶ Phóng to / Thu nhỏ
         </button>
-        <button id="btnOpenNative" type="button" style="background: #2563eb; color: #ffffff; border: none; padding: 9px 12px; border-radius: 6px; font-weight: bold; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+        <button id="btnOpenNative" type="button" onclick="openVideoInNewTab()" style="background: #2563eb; color: #ffffff; border: none; padding: 10px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
           Mở Tab Riêng ↗
         </button>
       </div>
@@ -257,6 +257,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=9.0"></script>
+  <script src="app.js?v=99.0"></script>
 </body>
 </html>
