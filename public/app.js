@@ -67,7 +67,6 @@ async function loadGenres() {
     const json = await res.json();
 
     if (json.status === 'success' && genreFilter && Array.isArray(json.data)) {
-      // Xóa các tag cũ nếu có để tránh trùng
       const oldTags = genreFilter.querySelectorAll('.genre-tag-dynamic');
       oldTags.forEach(t => t.remove());
 
@@ -583,6 +582,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (userToken) {
     loadUserFavorites();
+  }
+
+  // Xử lý phóng to toàn màn hình cho mobile
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', () => {
+      const playerBox = document.getElementById('mainPlayerBox');
+      if (!playerBox) return;
+
+      const videoElement = playerBox.querySelector('video') || playerBox.querySelector('iframe');
+      const target = videoElement || playerBox;
+
+      if (target.requestFullscreen) {
+        target.requestFullscreen();
+      } else if (target.webkitRequestFullscreen) {
+        target.webkitRequestFullscreen();
+      } else if (target.webkitEnterFullscreen) {
+        // Hỗ trợ video trên iOS Safari
+        target.webkitEnterFullscreen();
+      } else if (playerBox.requestFullscreen) {
+        playerBox.requestFullscreen();
+      }
+    });
   }
 
   const sendCommentBtn = document.getElementById('sendCommentBtn');
