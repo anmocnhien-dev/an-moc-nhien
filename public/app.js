@@ -151,7 +151,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ DOODSTREAM, PLYR YOUTUBE & DRIVE)
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ DOODSTREAM, PLAYMOGO, YOUTUBE & DRIVE)
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -191,9 +191,10 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. Nhận diện và nhúng link DoodStream / Streamwish
-  if (url.includes('dood') || url.includes('ds2play') || url.includes('streamwish') || url.includes('/e/')) {
+  // 1. Nhận diện và nhúng link DoodStream / Playmogo / Streamwish
+  if (url.includes('dood') || url.includes('ds2play') || url.includes('playmogo') || url.includes('streamwish') || url.includes('/e/')) {
     let embedUrl = url;
+    // Tự động chuyển link tải /d/ thành link nhúng /e/
     if (embedUrl.includes('/d/')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
     }
