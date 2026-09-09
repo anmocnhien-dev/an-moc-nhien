@@ -268,9 +268,9 @@ function setVideoSource(url) {
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px;">
-              <!-- Nút xoay ngang màn hình cho điện thoại -->
-              <button id="btnRotateScreen" title="Xoay ngang màn hình" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px;">
-                🔄 Xoay Ngang
+              <!-- Nút xoay ngang màn hình (icon gọn gàng) -->
+              <button id="btnRotateScreen" title="Xoay ngang màn hình" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.9rem; cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px;">
+                ⟲
               </button>
               <button id="btnFullscreenCustom" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;">⛶</button>
             </div>
