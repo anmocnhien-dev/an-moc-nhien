@@ -433,6 +433,7 @@ body.is-fullscreen-mode {
   position: fixed !important;
   width: 100vw !important;
   height: 100vh !important;
+  inset: 0 !important;
 }
 
 body.is-fullscreen-mode .modal {
@@ -476,20 +477,22 @@ body.is-fullscreen-mode #ytWrapper {
   height: 100% !important;
 }
 
-/* Ép video YouTube bung lấp đầy toàn bộ khung hình, không bị viền đen */
+/* Ép video YouTube bung phủ kín viền */
 body.is-fullscreen-mode #ytCropContainer {
   top: -8% !important;
-  left: -5% !important;
-  width: 110% !important;
+  left: -2% !important;
+  width: 104% !important;
   height: 116% !important;
 }
 
-/* Ẩn triệt để thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ và phần bình luận */
+/* ẨN TRIỆT ĐỂ: Thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ, phần bình luận và các nút đè */
 body.is-fullscreen-mode .movie-details,
 body.is-fullscreen-mode #commentSection,
 body.is-fullscreen-mode .modal-close,
 body.is-fullscreen-mode #fsTitleBar,
-body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
+body.is-fullscreen-mode .modal-content > div:not(.player-box),
+body.is-fullscreen-mode [onclick*="toggleCustomFullscreen"],
+body.is-fullscreen-mode [onclick*="exitToHomeDirectly"] {
   display: none !important;
 }
 
