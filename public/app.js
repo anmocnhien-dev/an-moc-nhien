@@ -219,7 +219,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. NHẬN DIỆN & PHÁT YOUTUBE CHUẨN API (CẮT BỎ LOGO, TẮT PHỤ ĐỀ, NÚT TUA 10S CHẠY 100%)
+  // 1. NHẬN DIỆN & PHÁT YOUTUBE CHUẨN API (CẮT BỎ LOGO, TẮT PHỤ ĐỀ, NÚT TUA 10S, XOAY MÀN HÌNH)
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     let videoId = '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -253,26 +253,47 @@ function setVideoSource(url) {
               <button id="btnPlayPauseCustom" style="background: none; border: none; color: #fff; font-size: 1.3rem; cursor: pointer; padding: 0; width: 28px;">⏸</button>
               
               <!-- Nút lùi 10 giây -->
-              <button id="btnRewind10" title="Lùi 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.8rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 2px;">
+              <button id="btnRewind10" title="Lùi 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
                 ◀◀ 10s
               </button>
               
               <!-- Nút tiến 10 giây -->
-              <button id="btnForward10" title="Tiến 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.8rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 2px;">
+              <button id="btnForward10" title="Tiến 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
                 10s ▶▶
               </button>
 
               <button id="btnMuteCustom" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; padding: 0;">🔊</button>
+              <button id="btnCcToggle" title="Bật/Tắt phụ đề" style="background: #27272a; border: 1px solid #3f3f46; color: #9ca3af; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 3px 7px;">CC</button>
               <span id="customTimeText" style="color: #e4e4e7; font-size: 0.85rem; font-family: monospace;">00:00 / 00:00</span>
             </div>
 
-            <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <!-- Nút xoay ngang màn hình cho điện thoại -->
+              <button id="btnRotateScreen" title="Xoay ngang màn hình" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                🔄 Xoay Ngang
+              </button>
               <button id="btnFullscreenCustom" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;">⛶</button>
             </div>
           </div>
         </div>
       </div>
     `;
+
+    let ccEnabled = false;
+
+    // Hàm cưỡng chế tắt phụ đề YouTube
+    const disableCaptions = () => {
+      if (!ytNativePlayer) return;
+      try {
+        if (typeof ytNativePlayer.unloadModule === 'function') {
+          ytNativePlayer.unloadModule('captions');
+        }
+        if (typeof ytNativePlayer.setOption === 'function') {
+          ytNativePlayer.setOption('captions', 'track', {});
+          ytNativePlayer.setOption('cc', 'track', {});
+        }
+      } catch (e) {}
+    };
 
     const initPlayer = () => {
       ytNativePlayer = new YT.Player('ytIframeTarget', {
@@ -284,12 +305,14 @@ function setVideoSource(url) {
           modestbranding: 1,
           iv_load_policy: 3,
           cc_load_policy: 0,
+          cc_lang_pref: 'none',
           playsinline: 1,
           disablekb: 1,
           fs: 0
         },
         events: {
           onReady: (event) => {
+            disableCaptions();
             event.target.playVideo();
 
             // Vòng lặp cập nhật thanh tua & thời gian
@@ -312,6 +335,7 @@ function setVideoSource(url) {
           onStateChange: (event) => {
             const btn = document.getElementById('btnPlayPauseCustom');
             if (event.data === YT.PlayerState.PLAYING) {
+              if (!ccEnabled) disableCaptions();
               if (btn) btn.textContent = '⏸';
             } else if (event.data === YT.PlayerState.PAUSED) {
               if (btn) btn.textContent = '▶';
@@ -383,6 +407,31 @@ function setVideoSource(url) {
       };
     }
 
+    // Nút Bật/Tắt phụ đề CC
+    const ccBtn = document.getElementById('btnCcToggle');
+    if (ccBtn) {
+      ccBtn.onclick = () => {
+        if (!ytNativePlayer) return;
+        ccEnabled = !ccEnabled;
+        if (ccEnabled) {
+          try {
+            if (typeof ytNativePlayer.loadModule === 'function') {
+              ytNativePlayer.loadModule('captions');
+            }
+            if (typeof ytNativePlayer.setOption === 'function') {
+              ytNativePlayer.setOption('captions', 'track', { languageCode: 'vi' });
+            }
+          } catch (e) {}
+          ccBtn.style.color = '#e50914';
+          ccBtn.style.borderColor = '#e50914';
+        } else {
+          disableCaptions();
+          ccBtn.style.color = '#9ca3af';
+          ccBtn.style.borderColor = '#3f3f46';
+        }
+      };
+    }
+
     // Nút Bật/Tắt tiếng
     const muteBtn = document.getElementById('btnMuteCustom');
     if (muteBtn) {
@@ -398,15 +447,55 @@ function setVideoSource(url) {
       };
     }
 
+    // Nút Xoay Ngang Màn Hình (Mobile & Desktop)
+    const rotateBtn = document.getElementById('btnRotateScreen');
+    if (rotateBtn) {
+      rotateBtn.onclick = async () => {
+        const wrapper = document.getElementById('ytWrapper');
+        try {
+          const isFull = document.fullscreenElement || document.webkitFullscreenElement;
+          if (!isFull) {
+            if (wrapper.requestFullscreen) {
+              await wrapper.requestFullscreen();
+            } else if (wrapper.webkitRequestFullscreen) {
+              await wrapper.webkitRequestFullscreen();
+            }
+            if (screen.orientation && screen.orientation.lock) {
+              await screen.orientation.lock('landscape').catch(() => {});
+            }
+          } else {
+            if (screen.orientation && screen.orientation.unlock) {
+              screen.orientation.unlock();
+            }
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              await document.webkitExitFullscreen();
+            }
+          }
+        } catch (err) {
+          console.warn('Thiết bị không hỗ trợ khóa xoay:', err);
+        }
+      };
+    }
+
     // Nút Toàn màn hình
     const fullBtn = document.getElementById('btnFullscreenCustom');
     if (fullBtn) {
       fullBtn.onclick = () => {
         const wrapper = document.getElementById('ytWrapper');
-        if (!document.fullscreenElement) {
-          wrapper.requestFullscreen().catch(err => console.warn(err));
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          if (wrapper.requestFullscreen) {
+            wrapper.requestFullscreen().catch(err => console.warn(err));
+          } else if (wrapper.webkitRequestFullscreen) {
+            wrapper.webkitRequestFullscreen();
+          }
         } else {
-          document.exitFullscreen();
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
         }
       };
     }
@@ -423,12 +512,12 @@ function setVideoSource(url) {
 
     playerBox.innerHTML = `
       <iframe 
-        id="videoPlayer"
+        id="videoPlayer" 
         src="${embedUrl}" 
         style="width: 100% !important; height: 100% !important; border: none; display: block;" 
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
-        scrolling="no"
-        frameborder="0"
+        scrolling="no" 
+        frameborder="0" 
         allowfullscreen>
       </iframe>
     `;
@@ -447,11 +536,11 @@ function setVideoSource(url) {
 
     playerBox.innerHTML = `
       <iframe 
-        id="videoPlayer"
+        id="videoPlayer" 
         src="${embedUrl}" 
         style="width: 100% !important; height: 100% !important; border: none; display: block;" 
         allow="autoplay; fullscreen; encrypted-media" 
-        sandbox="allow-scripts allow-same-origin allow-presentation"
+        sandbox="allow-scripts allow-same-origin allow-presentation" 
         allowfullscreen>
       </iframe>
     `;
@@ -468,7 +557,7 @@ function setVideoSource(url) {
       playsinline 
       webkit-playsinline 
       controlsList="nodownload" 
-      oncontextmenu="return false;"
+      oncontextmenu="return false;" 
       style="width: 100% !important; height: 100% !important; display: block; object-fit: contain;">
     </video>
   `;
