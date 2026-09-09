@@ -589,32 +589,48 @@ body.is-fullscreen-mode .modal-close {
 }
 
 /* ==========================================
-   CHẾ ĐỘ XOAY NGANG CƯỠNG CHẾ (LANDSCAPE MODE) CHUẨN TÂM
+   CHẾ ĐỘ XOAY NGANG CƯỠNG CHẾ TOÀN MÀN HÌNH (MOBILE FIX)
    ========================================== */
-.modal-content.is-rotated-landscape {
+#playerModal.is-rotated-landscape {
   position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  width: 100vh !important;
-  height: 100vw !important;
-  max-width: none !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
   margin: 0 !important;
-  transform: translate(-50%, -50%) rotate(90deg) !important;
-  transform-origin: center center !important;
+  overflow: hidden !important;
   z-index: 999999 !important;
-  border-radius: 0 !important;
-  border: none !important;
   background: #000 !important;
 }
 
-.modal-content.is-rotated-landscape .player-box {
+#playerModal.is-rotated-landscape .modal-content {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 100vh !important;
+  width: 100dvh !important;
+  height: 100vw !important;
+  height: 100dvw !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: #000 !important;
+  transform: translate(-50%, -50%) rotate(90deg) !important;
+  transform-origin: center center !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#playerModal.is-rotated-landscape .player-box {
   width: 100% !important;
   height: 100% !important;
+  flex: 1 !important;
   aspect-ratio: auto !important;
 }
 
-.modal-content.is-rotated-landscape .movie-details,
-.modal-content.is-rotated-landscape #commentSection,
-.modal-content.is-rotated-landscape .modal-close {
+#playerModal.is-rotated-landscape .movie-details,
+#playerModal.is-rotated-landscape #commentSection,
+#playerModal.is-rotated-landscape .modal-close {
   display: none !important;
 }
