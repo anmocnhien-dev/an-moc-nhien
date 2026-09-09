@@ -447,18 +447,21 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Xoay Ngang Màn Hình cưỡng chế CSS (Chạy chuẩn 100% trên iPhone/iPad & Android)
+    // Nút Xoay Ngang Màn Hình (Tương thích 100% Safari iOS & Android)
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
       rotateBtn.onclick = (e) => {
         e.stopPropagation();
-        const modalContent = document.querySelector('.modal-content');
-        if (!modalContent) return;
+        const modal = document.getElementById('playerModal');
+        if (!modal) return;
 
-        // Bật/tắt class xoay ngang CSS không bị iOS cướp trình phát
-        const isRotated = modalContent.classList.toggle('is-rotated-landscape');
+        // Bật/tắt class xoay ngang trên #playerModal
+        const isRotated = modal.classList.toggle('is-rotated-landscape');
         rotateBtn.style.color = isRotated ? '#e50914' : '#ffffff';
         rotateBtn.style.borderColor = isRotated ? '#e50914' : '#3f3f46';
+
+        // Đảm bảo cuộn về đầu trang tránh bị lệch góc trên Safari
+        window.scrollTo(0, 0);
       };
     }
 
@@ -614,9 +617,8 @@ if (closeModalBtn) {
     document.body.classList.remove('is-fullscreen-mode');
 
     // Tắt luôn chế độ xoay ngang nếu modal đóng
-    const modalContent = document.querySelector('.modal-content');
-    if (modalContent) {
-      modalContent.classList.remove('is-rotated-landscape');
+    if (modal) {
+      modal.classList.remove('is-rotated-landscape');
     }
     
     if (ytSyncInterval) {
