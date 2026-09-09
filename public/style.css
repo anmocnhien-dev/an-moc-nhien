@@ -72,6 +72,11 @@ header {
   cursor: pointer;
 }
 
+.auth-nav {
+  display: flex;
+  align-items: center;
+}
+
 .auth-nav button {
   background: transparent;
   border: 1px solid var(--border-color);
@@ -418,4 +423,96 @@ body.is-fullscreen-mode .movie-details,
 body.is-fullscreen-mode #commentSection,
 body.is-fullscreen-mode .modal-close {
   display: none !important;
+}
+
+/* ==========================================
+   TỐI ƯU GIAO DIỆN DI ĐỘNG (MOBILE RESPONSIVE)
+   ========================================== */
+@media (max-width: 768px) {
+  /* Tách header thành 2 hàng khoa học, không bị xô lệch hay mất chữ */
+  header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .logo {
+    font-size: 18px;
+    order: 1;
+  }
+
+  .auth-nav {
+    order: 2;
+  }
+
+  .auth-nav .user-badge {
+    gap: 6px;
+    font-size: 0.82rem;
+  }
+
+  .auth-nav button, 
+  .auth-nav a button {
+    padding: 5px 8px !important;
+    font-size: 0.78rem !important;
+    margin-left: 4px !important;
+    margin-right: 0 !important;
+  }
+
+  /* Đưa ô tìm kiếm xuống hàng riêng, trải đều 100% */
+  .search-box {
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .search-box input {
+    padding: 7px 10px;
+    font-size: 0.85rem;
+  }
+
+  .search-box button {
+    padding: 7px 12px;
+    font-size: 0.85rem;
+  }
+
+  /* Tối ưu thanh lọc thể loại cuộn ngang */
+  .genre-filter {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .genre-tag {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* Thẻ phim chia 2 cột chuẩn app xem phim */
+  .container {
+    padding: 15px 14px;
+  }
+
+  .movie-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .movie-card img {
+    height: 190px;
+  }
+
+  .movie-title {
+    font-size: 13px;
+  }
+
+  /* Modal xem phim trên điện thoại */
+  .modal {
+    padding: 0;
+  }
+
+  .modal-content {
+    margin: 0;
+    min-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
 }
