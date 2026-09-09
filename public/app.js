@@ -268,10 +268,11 @@ function setVideoSource(url) {
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px;">
-              <!-- Nút xoay ngang màn hình (icon gọn gàng) -->
+              <!-- Nút xoay ngang màn hình -->
               <button id="btnRotateScreen" title="Xoay ngang màn hình" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.9rem; cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px;">
                 ⟲
               </button>
+              <!-- Nút Toàn màn hình -->
               <button id="btnFullscreenCustom" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;">⛶</button>
             </div>
           </div>
@@ -447,41 +448,31 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Xoay Ngang Màn Hình (Tương thích 100% Safari iOS & Android)
+    // Nút Xoay Ngang Màn Hình (Tự kích hoạt toàn màn hình và xoay 90 độ phủ kín điện thoại)
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
       rotateBtn.onclick = (e) => {
         e.stopPropagation();
-        const modal = document.getElementById('playerModal');
-        if (!modal) return;
-
-        // Bật/tắt class xoay ngang trên #playerModal
-        const isRotated = modal.classList.toggle('is-rotated-landscape');
-        rotateBtn.style.color = isRotated ? '#e50914' : '#ffffff';
-        rotateBtn.style.borderColor = isRotated ? '#e50914' : '#3f3f46';
-
-        // Đảm bảo cuộn về đầu trang tránh bị lệch góc trên Safari
+        const isRotated = document.body.classList.toggle('is-rotated-landscape');
+        if (isRotated) {
+          document.body.classList.add('is-fullscreen-mode');
+          rotateBtn.style.color = '#e50914';
+          rotateBtn.style.borderColor = '#e50914';
+        } else {
+          rotateBtn.style.color = '#ffffff';
+          rotateBtn.style.borderColor = '#3f3f46';
+        }
         window.scrollTo(0, 0);
       };
     }
 
-    // Nút Toàn màn hình
+    // Nút Toàn màn hình (Hoạt động mượt mà trên cả iPhone, iPad và PC)
     const fullBtn = document.getElementById('btnFullscreenCustom');
     if (fullBtn) {
-      fullBtn.onclick = () => {
-        const wrapper = document.getElementById('ytWrapper');
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (wrapper.requestFullscreen) {
-            wrapper.requestFullscreen().catch(err => console.warn(err));
-          } else if (wrapper.webkitRequestFullscreen) {
-            wrapper.webkitRequestFullscreen();
-          }
-        } else {
-          if (document.exitFullscreen) {
-            document.exitFullscreen();
-          } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-          }
+      fullBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof window.toggleCustomFullscreen === 'function') {
+          window.toggleCustomFullscreen();
         }
       };
     }
@@ -615,10 +606,12 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
+    document.body.classList.remove('is-rotated-landscape');
 
-    // Tắt luôn chế độ xoay ngang nếu modal đóng
-    if (modal) {
-      modal.classList.remove('is-rotated-landscape');
+    const rotateBtn = document.getElementById('btnRotateScreen');
+    if (rotateBtn) {
+      rotateBtn.style.color = '#ffffff';
+      rotateBtn.style.borderColor = '#3f3f46';
     }
     
     if (ytSyncInterval) {
@@ -946,6 +939,11 @@ if (userLoginForm) {
 // ==========================================
 window.toggleCustomFullscreen = function() {
   const isFull = document.body.classList.toggle('is-fullscreen-mode');
+  // Khi tắt toàn màn hình thì tắt luôn xoay ngang
+  if (!isFull) {
+    document.body.classList.remove('is-rotated-landscape');
+  }
+
   const btn = document.getElementById('btnFullscreen');
   const fsTitle = document.getElementById('fsMovieTitle');
   const modalTitle = document.getElementById('modalMovieTitle');
@@ -967,6 +965,7 @@ window.toggleCustomFullscreen = function() {
 
 window.exitToHomeDirectly = function() {
   document.body.classList.remove('is-fullscreen-mode');
+  document.body.classList.remove('is-rotated-landscape');
   const btn = document.getElementById('btnFullscreen');
   if (btn) {
     btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
