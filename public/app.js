@@ -22,10 +22,19 @@ let currentMovieEpisodes = [];
 let currentEpisodeIndex = 0;
 let isSwitchingEpisode = false;
 
-// Biến lưu URL video đang phát hiện tại và instance Plyr/Timer
+// Biến lưu URL video và instance trình phát
 window.currentPlayingUrl = '';
 let currentPlyrInstance = null;
-let ytSyncTimer = null;
+let ytNativePlayer = null;
+let ytSyncInterval = null;
+
+// Nạp tự động YouTube IFrame API nếu chưa có
+if (!window.YT) {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+}
 
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
@@ -35,7 +44,6 @@ async function loadGenres() {
     const genreFilter = document.getElementById('genreFilter');
     const btnMyFavorites = document.getElementById('btnMyFavorites');
 
-    // Gắn sự kiện Phim Yêu Thích
     if (btnMyFavorites && !btnMyFavorites.dataset.bound) {
       btnMyFavorites.dataset.bound = 'true';
       btnMyFavorites.addEventListener('click', async () => {
@@ -56,7 +64,6 @@ async function loadGenres() {
       });
     }
 
-    // Gắn sự kiện nút Tất Cả
     const allTag = genreFilter ? genreFilter.querySelector('.genre-tag[data-slug=""]') : null;
     if (allTag && !allTag.dataset.bound) {
       allTag.dataset.bound = 'true';
@@ -94,7 +101,6 @@ async function loadGenres() {
   }
 }
 
-// Render danh sách thẻ phim
 function renderMovieList(movies, titleText = 'Phim Mới Cập Nhật') {
   const movieGrid = document.getElementById('movieGrid');
   const titleEl = document.getElementById('listTitle');
@@ -152,7 +158,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP
+// 2. PHÁT PHIM & BỘ ĐIỀU KHIỂN YOUTUBE HOÀN CHỈNH
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -188,13 +194,19 @@ function setVideoSource(url) {
   const playerBox = document.querySelector('.player-box');
   if (!playerBox) return;
 
-  // Dọn dẹp timer đồng bộ cũ
-  if (ytSyncTimer) {
-    clearInterval(ytSyncTimer);
-    ytSyncTimer = null;
+  // Dọn dẹp tiến trình YouTube cũ
+  if (ytSyncInterval) {
+    clearInterval(ytSyncInterval);
+    ytSyncInterval = null;
+  }
+  if (ytNativePlayer && typeof ytNativePlayer.destroy === 'function') {
+    try {
+      ytNativePlayer.destroy();
+    } catch (e) {}
+    ytNativePlayer = null;
   }
 
-  // Dọn dẹp instance Plyr cũ nếu có
+  // Dọn dẹp Plyr cũ
   if (currentPlyrInstance) {
     try {
       currentPlyrInstance.destroy();
@@ -207,7 +219,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. NHẬN DIỆN & PHÁT YOUTUBE VỚI CUSTOM CONTROLS (TẮT SẠCH LOGO, TẮT PHỤ ĐỀ, CÓ TUA 10S)
+  // 1. NHẬN DIỆN & PHÁT YOUTUBE CHUẨN API (CẮT BỎ LOGO, TẮT PHỤ ĐỀ, NÚT TUA 10S CHẠY 100%)
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     let videoId = '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -217,126 +229,180 @@ function setVideoSource(url) {
     }
 
     playerBox.innerHTML = `
-      <div id="ytCustomWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
-        <!-- controls=0: Ẩn hoàn toàn thanh điều khiển, logo YouTube và menu share/kênh -->
-        <!-- cc_load_policy=0: Tắt phụ đề dịch tự động -->
-        <iframe 
-          id="ytPlayerIframe"
-          src="https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&playsinline=1&disablekb=1&fs=0" 
-          style="width: 100%; height: 100%; border: none; display: block; pointer-events: none;" 
-          allow="autoplay; encrypted-media">
-        </iframe>
+      <div id="ytWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
+        <!-- Khung cắt mép viền: Thu nhỏ 120% để đẩy dải tiêu đề và logo YouTube hoàn toàn ra khỏi vùng nhìn -->
+        <div style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 130px); pointer-events: none;">
+          <div id="ytIframeTarget" style="width: 100%; height: 100%;"></div>
+        </div>
 
-        <!-- Lớp click trực tiếp trên màn hình để Play / Pause -->
-        <div id="ytClickCatcher" style="position: absolute; inset: 0; bottom: 56px; z-index: 10; cursor: pointer;"></div>
+        <!-- Vùng click trực tiếp lên màn hình để Play/Pause -->
+        <div id="ytCenterClick" style="position: absolute; inset: 0; bottom: 58px; z-index: 10; cursor: pointer;"></div>
 
-        <!-- Thanh điều khiển riêng chuẩn web phim -->
-        <div id="ytControlsBar" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 52px; background: linear-gradient(transparent, rgba(0,0,0,0.92)); display: flex; flex-direction: column; justify-content: flex-end; padding: 0 16px 8px; z-index: 20; box-sizing: border-box; transition: opacity 0.3s ease;">
+        <!-- Thanh điều khiển riêng biệt của An Mộc Nhiên -->
+        <div id="customControlsBar" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 56px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); display: flex; flex-direction: column; justify-content: flex-end; padding: 0 16px 10px; z-index: 20; box-sizing: border-box;">
           
-          <!-- Thanh tua tiến độ -->
-          <div style="width: 100%; margin-bottom: 6px; display: flex; align-items: center;">
-            <input type="range" id="ytProgressBar" min="0" max="100" value="0" step="0.1" style="width: 100%; cursor: pointer; accent-color: #e50914; height: 4px;">
+          <!-- Thanh tua phân cảnh -->
+          <div style="width: 100%; margin-bottom: 6px;">
+            <input type="range" id="customSeekSlider" min="0" max="100" value="0" step="0.1" 
+              style="width: 100%; cursor: pointer; accent-color: #e50914; height: 5px; margin: 0; display: block;">
           </div>
 
-          <!-- Các nút thao tác -->
+          <!-- Dãy nút điều khiển -->
           <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-              <button id="btnYtPlayPause" style="background: none; border: none; color: #fff; font-size: 1.25rem; cursor: pointer; padding: 0;">⏸</button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button id="btnPlayPauseCustom" style="background: none; border: none; color: #fff; font-size: 1.3rem; cursor: pointer; padding: 0; width: 28px;">⏸</button>
               
               <!-- Nút lùi 10 giây -->
-              <button id="btnYtRewind" title="Lùi 10 giây" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; border-radius: 4px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 3px;">
+              <button id="btnRewind10" title="Lùi 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.8rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 2px;">
                 ◀◀ 10s
               </button>
               
               <!-- Nút tiến 10 giây -->
-              <button id="btnYtForward" title="Tiến 10 giây" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; border-radius: 4px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 3px;">
+              <button id="btnForward10" title="Tiến 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.8rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 4px 9px; display: inline-flex; align-items: center; gap: 2px;">
                 10s ▶▶
               </button>
 
-              <button id="btnYtMute" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; padding: 0;">🔊</button>
-              
-              <!-- Thời gian hiện tại / Tổng thời lượng -->
-              <span id="ytTimeDisplay" style="color: #d1d5db; font-size: 0.85rem; font-family: monospace;">00:00 / --:--</span>
+              <button id="btnMuteCustom" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; padding: 0;">🔊</button>
+              <span id="customTimeText" style="color: #e4e4e7; font-size: 0.85rem; font-family: monospace;">00:00 / 00:00</span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button id="btnYtFull" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.15rem; cursor: pointer;">⛶</button>
+            <div>
+              <button id="btnFullscreenCustom" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;">⛶</button>
             </div>
           </div>
         </div>
       </div>
     `;
 
-    const iframe = document.getElementById('ytPlayerIframe');
-    const sendCmd = (func, args = []) => {
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
-      }
+    const initPlayer = () => {
+      ytNativePlayer = new YT.Player('ytIframeTarget', {
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          playsinline: 1,
+          disablekb: 1,
+          fs: 0
+        },
+        events: {
+          onReady: (event) => {
+            event.target.playVideo();
+
+            // Vòng lặp cập nhật thanh tua & thời gian
+            ytSyncInterval = setInterval(() => {
+              if (ytNativePlayer && typeof ytNativePlayer.getCurrentTime === 'function') {
+                const cur = ytNativePlayer.getCurrentTime() || 0;
+                const dur = ytNativePlayer.getDuration() || 0;
+                const slider = document.getElementById('customSeekSlider');
+                const txt = document.getElementById('customTimeText');
+
+                if (slider && dur > 0) {
+                  slider.value = (cur / dur) * 100;
+                }
+                if (txt) {
+                  txt.textContent = `${formatPlayerTime(cur)} / ${formatPlayerTime(dur)}`;
+                }
+              }
+            }, 500);
+          },
+          onStateChange: (event) => {
+            const btn = document.getElementById('btnPlayPauseCustom');
+            if (event.data === YT.PlayerState.PLAYING) {
+              if (btn) btn.textContent = '⏸';
+            } else if (event.data === YT.PlayerState.PAUSED) {
+              if (btn) btn.textContent = '▶';
+            } else if (event.data === YT.PlayerState.ENDED) {
+              playNextEpisode();
+            }
+          }
+        }
+      });
     };
 
-    let isPlaying = true;
-    let isMuted = false;
-    let videoDuration = 0;
-    let videoCurrentTime = 0;
+    // Chờ YouTube Iframe API sẵn sàng rồi khởi tạo
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
 
-    const playBtn = document.getElementById('btnYtPlayPause');
+    // Các sự kiện nút tương tác
     const togglePlay = () => {
-      if (isPlaying) {
-        sendCmd('pauseVideo');
-        if (playBtn) playBtn.textContent = '▶';
+      if (!ytNativePlayer || typeof ytNativePlayer.getPlayerState !== 'function') return;
+      const state = ytNativePlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytNativePlayer.pauseVideo();
       } else {
-        sendCmd('playVideo');
-        if (playBtn) playBtn.textContent = '⏸';
+        ytNativePlayer.playVideo();
       }
-      isPlaying = !isPlaying;
     };
 
+    const playBtn = document.getElementById('btnPlayPauseCustom');
     if (playBtn) playBtn.onclick = togglePlay;
-    const catcher = document.getElementById('ytClickCatcher');
-    if (catcher) catcher.onclick = togglePlay;
+    const centerClick = document.getElementById('ytCenterClick');
+    if (centerClick) centerClick.onclick = togglePlay;
 
-    // Bắt sự kiện phím tắt khi xem video
-    document.onkeydown = (e) => {
-      const modal = document.getElementById('playerModal');
-      if (modal && modal.style.display === 'block') {
-        if (e.code === 'Space') {
-          e.preventDefault();
-          togglePlay();
-        } else if (e.code === 'ArrowLeft') {
-          sendCmd('seekBy', [-10]);
-        } else if (e.code === 'ArrowRight') {
-          sendCmd('seekBy', [10]);
+    // Nút Lùi 10s
+    const rewBtn = document.getElementById('btnRewind10');
+    if (rewBtn) {
+      rewBtn.onclick = () => {
+        if (ytNativePlayer && typeof ytNativePlayer.getCurrentTime === 'function') {
+          const cur = ytNativePlayer.getCurrentTime();
+          ytNativePlayer.seekTo(Math.max(0, cur - 10), true);
         }
-      }
-    };
-
-    // Gắn lệnh nút tua 10 giây
-    const rewBtn = document.getElementById('btnYtRewind');
-    if (rewBtn) rewBtn.onclick = () => sendCmd('seekBy', [-10]);
-
-    const fwdBtn = document.getElementById('btnYtForward');
-    if (fwdBtn) fwdBtn.onclick = () => sendCmd('seekBy', [10]);
-
-    // Bật/tắt tiếng
-    const muteBtn = document.getElementById('btnYtMute');
-    if (muteBtn) {
-      muteBtn.onclick = () => {
-        if (isMuted) {
-          sendCmd('unMute');
-          muteBtn.textContent = '🔊';
-        } else {
-          sendCmd('mute');
-          muteBtn.textContent = '🔇';
-        }
-        isMuted = !isMuted;
       };
     }
 
-    // Toàn màn hình
-    const fullBtn = document.getElementById('btnYtFull');
+    // Nút Tiến 10s
+    const fwdBtn = document.getElementById('btnForward10');
+    if (fwdBtn) {
+      fwdBtn.onclick = () => {
+        if (ytNativePlayer && typeof ytNativePlayer.getCurrentTime === 'function') {
+          const cur = ytNativePlayer.getCurrentTime();
+          const dur = ytNativePlayer.getDuration();
+          ytNativePlayer.seekTo(Math.min(dur, cur + 10), true);
+        }
+      };
+    }
+
+    // Tua bằng Slider
+    const seekSlider = document.getElementById('customSeekSlider');
+    if (seekSlider) {
+      seekSlider.oninput = (e) => {
+        if (ytNativePlayer && typeof ytNativePlayer.getDuration === 'function') {
+          const dur = ytNativePlayer.getDuration();
+          if (dur > 0) {
+            const targetTime = (e.target.value / 100) * dur;
+            ytNativePlayer.seekTo(targetTime, true);
+          }
+        }
+      };
+    }
+
+    // Nút Bật/Tắt tiếng
+    const muteBtn = document.getElementById('btnMuteCustom');
+    if (muteBtn) {
+      muteBtn.onclick = () => {
+        if (!ytNativePlayer || typeof ytNativePlayer.isMuted !== 'function') return;
+        if (ytNativePlayer.isMuted()) {
+          ytNativePlayer.unMute();
+          muteBtn.textContent = '🔊';
+        } else {
+          ytNativePlayer.mute();
+          muteBtn.textContent = '🔇';
+        }
+      };
+    }
+
+    // Nút Toàn màn hình
+    const fullBtn = document.getElementById('btnFullscreenCustom');
     if (fullBtn) {
       fullBtn.onclick = () => {
-        const wrapper = document.getElementById('ytCustomWrapper');
+        const wrapper = document.getElementById('ytWrapper');
         if (!document.fullscreenElement) {
           wrapper.requestFullscreen().catch(err => console.warn(err));
         } else {
@@ -344,51 +410,6 @@ function setVideoSource(url) {
         }
       };
     }
-
-    // Lắng nghe dữ liệu phản hồi từ YouTube Iframe API
-    const handleYtMessage = (event) => {
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data && data.info) {
-          if (typeof data.info.duration === 'number' && data.info.duration > 0) {
-            videoDuration = data.info.duration;
-          }
-          if (typeof data.info.currentTime === 'number') {
-            videoCurrentTime = data.info.currentTime;
-            const progress = document.getElementById('ytProgressBar');
-            const timeDisplay = document.getElementById('ytTimeDisplay');
-            if (progress && videoDuration > 0) {
-              progress.value = (videoCurrentTime / videoDuration) * 100;
-            }
-            if (timeDisplay) {
-              timeDisplay.textContent = `${formatPlayerTime(videoCurrentTime)} / ${formatPlayerTime(videoDuration)}`;
-            }
-          }
-          if (data.info.playerState === 0) {
-            playNextEpisode();
-          }
-        }
-      } catch (err) {}
-    };
-
-    window.removeEventListener('message', handleYtMessage);
-    window.addEventListener('message', handleYtMessage);
-
-    // Kéo thanh tiến độ để tua đến vị trí mong muốn
-    const progressBar = document.getElementById('ytProgressBar');
-    if (progressBar) {
-      progressBar.oninput = (e) => {
-        if (videoDuration > 0) {
-          const seekToSeconds = (e.target.value / 100) * videoDuration;
-          sendCmd('seekTo', [seekToSeconds, true]);
-        }
-      };
-    }
-
-    // Chu kỳ gửi lệnh lắng nghe tiến độ phát
-    ytSyncTimer = setInterval(() => {
-      sendCmd('listening');
-    }, 500);
 
     return;
   }
@@ -520,9 +541,15 @@ if (closeModalBtn) {
     
     document.body.classList.remove('is-fullscreen-mode');
     
-    if (ytSyncTimer) {
-      clearInterval(ytSyncTimer);
-      ytSyncTimer = null;
+    if (ytSyncInterval) {
+      clearInterval(ytSyncInterval);
+      ytSyncInterval = null;
+    }
+    if (ytNativePlayer && typeof ytNativePlayer.destroy === 'function') {
+      try {
+        ytNativePlayer.destroy();
+      } catch (e) {}
+      ytNativePlayer = null;
     }
 
     if (currentPlyrInstance) {
@@ -869,7 +896,6 @@ window.exitToHomeDirectly = function() {
   if (closeBtn) closeBtn.click();
 };
 
-// Phím ESC trên máy tính
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (document.body.classList.contains('is-fullscreen-mode')) {
