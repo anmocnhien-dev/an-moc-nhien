@@ -230,7 +230,6 @@ header {
   height: 100%;
 }
 
-/* Đảm bảo khung Iframe YouTube luôn lấp đầy không gian */
 #ytWrapper iframe {
   width: 100% !important;
   height: 100% !important;
@@ -353,9 +352,8 @@ header {
 
 /* ==========================================
    CUSTOM PLAYER (YOUTUBE)
-   ========================================= */
+   ========================================== */
 
-/* Thanh điều khiển tự động ẩn khi không rê chuột */
 #ytWrapper:hover #customControlsBar {
   opacity: 1 !important;
   pointer-events: auto;
@@ -366,7 +364,6 @@ header {
   transition: opacity 0.3s ease;
 }
 
-/* Tùy biến thanh trượt tua video (Slider) */
 #customSeekSlider {
   -webkit-appearance: none;
   appearance: none;
@@ -391,7 +388,6 @@ header {
   box-shadow: 0 0 6px rgba(229, 9, 20, 0.8);
 }
 
-/* Nút tua 10 giây mặc định */
 #btnRewind10, #btnForward10 {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 0.72rem !important;
@@ -411,7 +407,6 @@ header {
   border-color: var(--accent) !important;
 }
 
-/* Nút xoay ngang màn hình mặc định */
 #btnRotateScreen {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-size: 0.85rem !important;
@@ -431,13 +426,13 @@ header {
 }
 
 /* ==========================================
-   CHẾ ĐỘ XEM TOÀN MÀN HÌNH NỔI (FULLSCREEN NATIVE)
+   CHẾ ĐỘ XEM TOÀN MÀN HÌNH NỔI (BUNG KÍN 100%)
    ========================================== */
 body.is-fullscreen-mode {
   overflow: hidden !important;
   position: fixed !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100vw !important;
+  height: 100vh !important;
 }
 
 body.is-fullscreen-mode .modal {
@@ -481,7 +476,15 @@ body.is-fullscreen-mode #ytWrapper {
   height: 100% !important;
 }
 
-/* Ẩn triệt để thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ và phần bình luận để không che video */
+/* Ép video YouTube bung lấp đầy toàn bộ khung hình, không bị viền đen */
+body.is-fullscreen-mode #ytCropContainer {
+  top: -8% !important;
+  left: -5% !important;
+  width: 110% !important;
+  height: 116% !important;
+}
+
+/* Ẩn triệt để thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ và phần bình luận */
 body.is-fullscreen-mode .movie-details,
 body.is-fullscreen-mode #commentSection,
 body.is-fullscreen-mode .modal-close,
@@ -494,7 +497,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
    TỐI ƯU GIAO DIỆN DI ĐỘNG (MOBILE RESPONSIVE)
    ========================================== */
 @media (max-width: 768px) {
-  /* Tách header thành 2 hàng khoa học */
   header {
     padding: 10px 14px;
     flex-wrap: wrap;
@@ -523,7 +525,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     margin-right: 0 !important;
   }
 
-  /* Đưa ô tìm kiếm xuống hàng riêng, trải đều 100% */
   .search-box {
     order: 3;
     max-width: 100%;
@@ -540,7 +541,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     font-size: 0.85rem;
   }
 
-  /* Tối ưu thanh lọc thể loại cuộn ngang */
   .genre-filter {
     padding: 10px 14px;
     gap: 8px;
@@ -551,7 +551,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     font-size: 12px;
   }
 
-  /* Thẻ phim chia 2 cột chuẩn app xem phim */
   .container {
     padding: 15px 14px;
   }
@@ -569,7 +568,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     font-size: 13px;
   }
 
-  /* Modal xem phim trên điện thoại */
   .modal {
     padding: 0;
   }
@@ -582,7 +580,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     border: none;
   }
 
-  /* Tinh chỉnh thanh controls trên điện thoại */
   #customControlsBar {
     height: 48px !important;
     padding: 0 8px 6px !important;
@@ -596,7 +593,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     font-size: 0.9rem !important;
   }
 
-  /* Ép nút tua 10s nhỏ gọn, không phồng to trên iPhone */
   #btnRewind10, #btnForward10 {
     font-size: 0.62rem !important;
     padding: 2px 5px !important;
@@ -605,7 +601,6 @@ body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
     max-width: 48px !important;
   }
 
-  /* Tối ưu nút xoay ngang trên điện thoại dạng icon vuông nhỏ */
   #btnRotateScreen {
     width: 24px !important;
     height: 22px !important;

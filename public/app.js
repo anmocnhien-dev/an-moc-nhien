@@ -230,8 +230,8 @@ function setVideoSource(url) {
 
     playerBox.innerHTML = `
       <div id="ytWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
-        <!-- Khung cắt mép viền: Thu nhỏ để giấu dải tiêu đề và logo YouTube -->
-        <div style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 130px); pointer-events: none;">
+        <!-- Khung cắt mép viền video YouTube -->
+        <div id="ytCropContainer" style="position: absolute; top: -60px; left: 0; width: 100%; height: calc(100% + 120px); pointer-events: none;">
           <div id="ytIframeTarget" style="width: 100%; height: 100%;"></div>
         </div>
 
@@ -448,23 +448,34 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Xoay Ngang / Toàn màn hình chuẩn (Mobile & Desktop)
+    // Hàm mở toàn màn hình chuẩn (hỗ trợ cả Browser Fullscreen & CSS Fullscreen)
+    const triggerFullView = async () => {
+      const modal = document.getElementById('playerModal');
+      if (typeof window.toggleCustomFullscreen === 'function') {
+        window.toggleCustomFullscreen();
+      }
+
+      // Kích hoạt requestFullscreen của trình duyệt để giấu thanh công cụ trên điện thoại
+      try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          if (modal && modal.requestFullscreen) {
+            await modal.requestFullscreen();
+          } else if (modal && modal.webkitRequestFullscreen) {
+            await modal.webkitRequestFullscreen();
+          }
+        }
+        if (screen.orientation && screen.orientation.lock) {
+          await screen.orientation.lock('landscape').catch(() => {});
+        }
+      } catch (err) {}
+    };
+
+    // Nút Xoay Ngang / Toàn màn hình chuẩn
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
-      rotateBtn.onclick = async (e) => {
+      rotateBtn.onclick = (e) => {
         e.stopPropagation();
-        if (typeof window.toggleCustomFullscreen === 'function') {
-          window.toggleCustomFullscreen();
-        }
-        try {
-          if (screen.orientation && screen.orientation.lock) {
-            if (document.body.classList.contains('is-fullscreen-mode')) {
-              await screen.orientation.lock('landscape').catch(() => {});
-            } else {
-              screen.orientation.unlock();
-            }
-          }
-        } catch (err) {}
+        triggerFullView();
       };
     }
 
@@ -473,9 +484,7 @@ function setVideoSource(url) {
     if (fullBtn) {
       fullBtn.onclick = (e) => {
         e.stopPropagation();
-        if (typeof window.toggleCustomFullscreen === 'function') {
-          window.toggleCustomFullscreen();
-        }
+        triggerFullView();
       };
     }
 
@@ -608,6 +617,11 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
+
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
     
     if (ytSyncInterval) {
       clearInterval(ytSyncInterval);
