@@ -424,10 +424,25 @@ app.put('/api/admin/movies/:id', authenticateToken, requireAdmin, (req, res) => 
   );
 });
 
+// Xóa phim: Dọn sạch bảng comments, favorites, episodes trước để không dính Foreign Key Constraint
 app.delete('/api/admin/movies/:id', authenticateToken, requireAdmin, (req, res) => {
-  db.run(`DELETE FROM movies WHERE id = ?`, [req.params.id], function (err) {
-    if (err) return res.status(500).json({ status: 'error', message: err.message });
-    res.json({ status: 'success', message: 'Đã xóa phim thành công.' });
+  const movieId = req.params.id;
+
+  db.run(`DELETE FROM comments WHERE movie_id = ?`, [movieId], (err1) => {
+    if (err1) return res.status(500).json({ status: 'error', message: 'Lỗi dọn dẹp bình luận: ' + err1.message });
+
+    db.run(`DELETE FROM favorites WHERE movie_id = ?`, [movieId], (err2) => {
+      if (err2) return res.status(500).json({ status: 'error', message: 'Lỗi dọn dẹp danh sách yêu thích: ' + err2.message });
+
+      db.run(`DELETE FROM episodes WHERE movie_id = ?`, [movieId], (err3) => {
+        if (err3) return res.status(500).json({ status: 'error', message: 'Lỗi dọn dẹp tập phim: ' + err3.message });
+
+        db.run(`DELETE FROM movies WHERE id = ?`, [movieId], function (err4) {
+          if (err4) return res.status(500).json({ status: 'error', message: 'Lỗi xóa phim: ' + err4.message });
+          res.json({ status: 'success', message: 'Đã xóa phim và toàn bộ dữ liệu liên quan thành công!' });
+        });
+      });
+    });
   });
 });
 
