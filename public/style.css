@@ -485,15 +485,27 @@ body.is-fullscreen-mode #ytCropContainer {
   height: 116% !important;
 }
 
-/* ẨN TRIỆT ĐỂ: Thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ, phần bình luận và các nút đè */
+/* ẨN TRIỆT ĐỂ 100%: 
+   Thanh đen phía trên (tên phim, Thu nhỏ, Về Trang Chủ), 
+   header, nút đóng và phần bình luận */
+body.is-fullscreen-mode header,
 body.is-fullscreen-mode .movie-details,
 body.is-fullscreen-mode #commentSection,
 body.is-fullscreen-mode .modal-close,
 body.is-fullscreen-mode #fsTitleBar,
+body.is-fullscreen-mode [id*="fsTitle"],
+body.is-fullscreen-mode [id*="fsHeader"],
+body.is-fullscreen-mode [class*="fs-header"],
+body.is-fullscreen-mode [class*="fs-title"],
 body.is-fullscreen-mode .modal-content > div:not(.player-box),
-body.is-fullscreen-mode [onclick*="toggleCustomFullscreen"],
-body.is-fullscreen-mode [onclick*="exitToHomeDirectly"] {
+body.is-fullscreen-mode .modal > div:not(.modal-content),
+body.is-fullscreen-mode button[onclick*="toggleCustomFullscreen"],
+body.is-fullscreen-mode button[onclick*="exitToHomeDirectly"] {
   display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* ==========================================
