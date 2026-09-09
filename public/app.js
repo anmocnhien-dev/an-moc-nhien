@@ -150,7 +150,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ YOUTUBE & DRIVE)
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -180,6 +180,28 @@ function setVideoSource(url) {
     return;
   }
 
+  // 1. Nhận diện và nhúng link YouTube (Hỗ trợ unlisted, watch?v=, youtu.be, embed)
+  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    let videoId = '';
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      videoId = match[2];
+    }
+
+    playerBox.innerHTML = `
+      <iframe 
+        id="videoPlayer"
+        src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" 
+        style="width: 100% !important; height: 100% !important; border: none; display: block;" 
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    `;
+    return;
+  }
+
+  // 2. Nhận diện và nhúng link Google Drive
   if (url.includes('drive.google.com')) {
     let embedUrl = url;
     const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
@@ -199,26 +221,28 @@ function setVideoSource(url) {
         allowfullscreen>
       </iframe>
     `;
-  } else {
-    playerBox.innerHTML = `
-      <video 
-        id="videoPlayer" 
-        src="${url}" 
-        controls 
-        autoplay 
-        playsinline 
-        webkit-playsinline 
-        controlsList="nodownload" 
-        oncontextmenu="return false;"
-        style="width: 100% !important; height: 100% !important; display: block; object-fit: contain;">
-      </video>
-    `;
+    return;
+  }
 
-    const videoEl = playerBox.querySelector('video');
-    if (videoEl) {
-      videoEl.onended = () => playNextEpisode();
-      videoEl.play().catch(err => console.warn('Trình duyệt chặn autoplay:', err));
-    }
+  // 3. File MP4 trực tiếp thông thường
+  playerBox.innerHTML = `
+    <video 
+      id="videoPlayer" 
+      src="${url}" 
+      controls 
+      autoplay 
+      playsinline 
+      webkit-playsinline 
+      controlsList="nodownload" 
+      oncontextmenu="return false;"
+      style="width: 100% !important; height: 100% !important; display: block; object-fit: contain;">
+    </video>
+  `;
+
+  const videoEl = playerBox.querySelector('video');
+  if (videoEl) {
+    videoEl.onended = () => playNextEpisode();
+    videoEl.play().catch(err => console.warn('Trình duyệt chặn autoplay:', err));
   }
 }
 
