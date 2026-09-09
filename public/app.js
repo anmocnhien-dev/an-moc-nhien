@@ -151,7 +151,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ DOODSTREAM, PLAYMOGO, YOUTUBE & DRIVE)
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (MASKING YOUTUBE & HỖ TRỢ ĐA NỀN TẢNG)
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -191,7 +191,37 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. Nhận diện và nhúng link DoodStream / Playmogo / Streamwish
+  // 1. NHẬN DIỆN & MASKING YOUTUBE (XÓA SẠCH CHỮ YOUTUBE, TIÊU ĐỀ, KÊNH VÀ BLOCKED CLICK NGOÀI)
+  if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    let videoId = '';
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      videoId = match[2];
+    }
+
+    playerBox.innerHTML = `
+      <div style="position: relative; width: 100%; height: 100%; overflow: hidden; background: #000;">
+        <!-- Iframe kéo giãn viền: top -65px giấu tiêu đề/kênh, height giãn dài giấu nút YouTube góc phải -->
+        <iframe 
+          id="videoPlayer"
+          src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&fs=0&disablekb=0" 
+          style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 125px); border: none; display: block;" 
+          allow="autoplay; encrypted-media; picture-in-picture" 
+          allowfullscreen>
+        </iframe>
+
+        <!-- Lớp kính che góc trên: Ngăn bấm vào tên kênh/avatar/nút share nhảy sang YouTube -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; z-index: 10; cursor: default;"></div>
+
+        <!-- Lớp kính che góc dưới bên phải: Ngăn bấm vào logo YouTube/video liên quan -->
+        <div style="position: absolute; bottom: 0; right: 0; width: 150px; height: 50px; z-index: 10; cursor: default;"></div>
+      </div>
+    `;
+    return;
+  }
+
+  // 2. Nhận diện và nhúng link DoodStream / Playmogo / Streamwish
   if (url.includes('dood') || url.includes('ds2play') || url.includes('playmogo') || url.includes('streamwish') || url.includes('/e/')) {
     let embedUrl = url;
     // Tự động chuyển link tải /d/ thành link nhúng /e/
@@ -210,42 +240,6 @@ function setVideoSource(url) {
         allowfullscreen>
       </iframe>
     `;
-    return;
-  }
-
-  // 2. Nhận diện và phát qua Plyr.js cho YouTube
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    let videoId = '';
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      videoId = match[2];
-    }
-
-    playerBox.innerHTML = `
-      <div id="plyrYoutubePlayer" data-plyr-provider="youtube" data-plyr-embed-id="${videoId}"></div>
-    `;
-
-    try {
-      currentPlyrInstance = new Plyr('#plyrYoutubePlayer', {
-        controls: [
-          'play-large', 'play', 'progress', 'current-time', 
-          'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-        ],
-        youtube: {
-          noCookie: true,
-          rel: 0,
-          showinfo: 0,
-          iv_load_policy: 3,
-          modestbranding: 1
-        },
-        autoplay: true
-      });
-
-      currentPlyrInstance.on('ended', () => playNextEpisode());
-    } catch (err) {
-      console.error('Lỗi khởi tạo Plyr:', err);
-    }
     return;
   }
 
