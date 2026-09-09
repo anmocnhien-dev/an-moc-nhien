@@ -230,6 +230,12 @@ header {
   height: 100%;
 }
 
+/* Đảm bảo khung Iframe YouTube luôn lấp đầy không gian */
+#ytWrapper iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .movie-details {
   padding: 20px;
 }
@@ -347,7 +353,7 @@ header {
 
 /* ==========================================
    CUSTOM PLAYER (YOUTUBE)
-   ========================================== */
+   ========================================= */
 
 /* Thanh điều khiển tự động ẩn khi không rê chuột */
 #ytWrapper:hover #customControlsBar {
@@ -453,6 +459,7 @@ body.is-fullscreen-mode .modal-content {
   height: 100vh !important;
   height: 100dvh !important;
   margin: 0 !important;
+  padding: 0 !important;
   border-radius: 0 !important;
   border: none !important;
   display: flex !important;
@@ -462,8 +469,9 @@ body.is-fullscreen-mode .modal-content {
 
 body.is-fullscreen-mode .player-box {
   flex: 1 !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   aspect-ratio: auto !important;
   position: relative !important;
 }
@@ -473,9 +481,12 @@ body.is-fullscreen-mode #ytWrapper {
   height: 100% !important;
 }
 
+/* Ẩn triệt để thanh tiêu đề, nút Thu nhỏ, nút Về trang chủ và phần bình luận để không che video */
 body.is-fullscreen-mode .movie-details,
 body.is-fullscreen-mode #commentSection,
-body.is-fullscreen-mode .modal-close {
+body.is-fullscreen-mode .modal-close,
+body.is-fullscreen-mode #fsTitleBar,
+body.is-fullscreen-mode .modal-content > div:first-child:not(.player-box) {
   display: none !important;
 }
 
