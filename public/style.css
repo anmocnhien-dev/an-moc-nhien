@@ -385,7 +385,20 @@ header {
   box-shadow: 0 0 6px rgba(229, 9, 20, 0.8);
 }
 
-/* Nút tua 10 giây hiệu ứng hover */
+/* Nút tua 10 giây mặc định */
+#btnRewind10, #btnForward10 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 0.72rem !important;
+  padding: 3px 6px !important;
+  height: 26px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
 #btnRewind10:hover, #btnForward10:hover {
   background: #3f3f46 !important;
   color: #ff2a35 !important;
@@ -429,7 +442,7 @@ body.is-fullscreen-mode .modal-close {
    TỐI ƯU GIAO DIỆN DI ĐỘNG (MOBILE RESPONSIVE)
    ========================================== */
 @media (max-width: 768px) {
-  /* Tách header thành 2 hàng khoa học, không bị xô lệch hay mất chữ */
+  /* Tách header thành 2 hàng khoa học */
   header {
     padding: 10px 14px;
     flex-wrap: wrap;
@@ -514,5 +527,32 @@ body.is-fullscreen-mode .modal-close {
     min-height: 100vh;
     border-radius: 0;
     border: none;
+  }
+
+  /* Tinh chỉnh thanh controls trên điện thoại */
+  #customControlsBar {
+    height: 48px !important;
+    padding: 0 8px 6px !important;
+  }
+
+  #customControlsBar > div:last-child {
+    gap: 6px !important;
+  }
+
+  #customControlsBar button {
+    font-size: 0.9rem !important;
+  }
+
+  /* Ép nút tua 10s nhỏ gọn, không phồng to trên iPhone */
+  #btnRewind10, #btnForward10 {
+    font-size: 0.62rem !important;
+    padding: 2px 5px !important;
+    height: 22px !important;
+    min-width: unset !important;
+    max-width: 48px !important;
+  }
+
+  #customTimeText {
+    font-size: 0.7rem !important;
   }
 }
