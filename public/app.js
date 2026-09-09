@@ -22,8 +22,9 @@ let currentMovieEpisodes = [];
 let currentEpisodeIndex = 0;
 let isSwitchingEpisode = false;
 
-// Biến lưu URL video đang phát hiện tại
+// Biến lưu URL video đang phát hiện tại và instance Plyr
 window.currentPlayingUrl = '';
+let currentPlyrInstance = null;
 
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
@@ -150,7 +151,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ YOUTUBE & DRIVE)
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (HỖ TRỢ DOODSTREAM, PLYR YOUTUBE & DRIVE)
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -175,12 +176,43 @@ function setVideoSource(url) {
   const playerBox = document.querySelector('.player-box');
   if (!playerBox) return;
 
+  // Dọn dẹp instance Plyr cũ nếu có
+  if (currentPlyrInstance) {
+    try {
+      currentPlyrInstance.destroy();
+    } catch (e) {
+      console.warn('Lỗi giải phóng Plyr:', e);
+    }
+    currentPlyrInstance = null;
+  }
+
   if (!url) {
     playerBox.innerHTML = '<div style="width:100%;height:100%;background:#000;"></div>';
     return;
   }
 
-  // 1. Nhận diện và nhúng link YouTube (Hỗ trợ unlisted, watch?v=, youtu.be, embed)
+  // 1. Nhận diện và nhúng link DoodStream / Streamwish
+  if (url.includes('dood') || url.includes('ds2play') || url.includes('streamwish') || url.includes('/e/')) {
+    let embedUrl = url;
+    if (embedUrl.includes('/d/')) {
+      embedUrl = embedUrl.replace('/d/', '/e/');
+    }
+
+    playerBox.innerHTML = `
+      <iframe 
+        id="videoPlayer"
+        src="${embedUrl}" 
+        style="width: 100% !important; height: 100% !important; border: none; display: block;" 
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+        scrolling="no"
+        frameborder="0"
+        allowfullscreen>
+      </iframe>
+    `;
+    return;
+  }
+
+  // 2. Nhận diện và phát qua Plyr.js cho YouTube
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     let videoId = '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -190,18 +222,33 @@ function setVideoSource(url) {
     }
 
     playerBox.innerHTML = `
-      <iframe 
-        id="videoPlayer"
-        src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" 
-        style="width: 100% !important; height: 100% !important; border: none; display: block;" 
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
+      <div id="plyrYoutubePlayer" data-plyr-provider="youtube" data-plyr-embed-id="${videoId}"></div>
     `;
+
+    try {
+      currentPlyrInstance = new Plyr('#plyrYoutubePlayer', {
+        controls: [
+          'play-large', 'play', 'progress', 'current-time', 
+          'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+        ],
+        youtube: {
+          noCookie: true,
+          rel: 0,
+          showinfo: 0,
+          iv_load_policy: 3,
+          modestbranding: 1
+        },
+        autoplay: true
+      });
+
+      currentPlyrInstance.on('ended', () => playNextEpisode());
+    } catch (err) {
+      console.error('Lỗi khởi tạo Plyr:', err);
+    }
     return;
   }
 
-  // 2. Nhận diện và nhúng link Google Drive
+  // 3. Nhận diện và nhúng link Google Drive
   if (url.includes('drive.google.com')) {
     let embedUrl = url;
     const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
@@ -224,7 +271,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 3. File MP4 trực tiếp thông thường
+  // 4. File MP4 trực tiếp thông thường
   playerBox.innerHTML = `
     <video 
       id="videoPlayer" 
@@ -309,6 +356,14 @@ if (closeModalBtn) {
     // Tắt toàn màn hình nếu đang bật khi đóng modal
     document.body.classList.remove('is-fullscreen-mode');
     
+    // Hủy trình phát Plyr khi tắt popup
+    if (currentPlyrInstance) {
+      try {
+        currentPlyrInstance.destroy();
+      } catch (e) {}
+      currentPlyrInstance = null;
+    }
+
     setVideoSource('');
     if (modal) modal.style.display = 'none';
     currentOpeningMovieId = null;
