@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AN MỘC NHIÊN - Xem Phim Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css?v=105.0">
+  
+  <!-- Plyr.js Library (Tối ưu giao diện player bọc video) -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+  <link rel="stylesheet" href="style.css?v=106.0">
   <style>
     /* KHUNG PHÁT VIDEO CHUẨN 16:9 */
     .player-box {
@@ -27,6 +32,23 @@
       display: block !important;
     }
 
+    /* CSS ĐẶC TRỊ CHO PLYR BỌC YOUTUBE (ẨN TIÊU ĐỀ, KÊNH VÀ LOGO YT) */
+    .player-box .plyr {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: #000 !important;
+    }
+
+    /* Phóng to nhẹ tầng iframe bên trong để đẩy mép chứa logo & avatar ra ngoài */
+    .player-box .plyr__video-embed iframe {
+      top: -30% !important;
+      height: 160% !important;
+      transform: scale(1.08) !important;
+    }
+
     /* THANH ĐIỀU KHIỂN NỔI KHI PHÓNG TO TOÀN MÀN HÌNH */
     #fullscreenTopBar {
       display: none;
@@ -38,7 +60,6 @@
       background: rgba(10, 10, 12, 0.95) !important;
       backdrop-filter: blur(8px) !important;
       z-index: 2147483647 !important; /* Mức cao nhất tuyệt đối */
-      display: none;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
@@ -184,7 +205,7 @@
       <!-- Nút thoát quay về trang chủ khi xem thông thường -->
       <button class="modal-close" id="closeModal" title="Đóng về trang chủ">&times;</button>
       
-      <!-- Khung phát video -->
+      <!-- Khung phát video (Chứa player Plyr / Video / Iframe) -->
       <div class="player-box" id="mainPlayerBox">
         <video id="videoPlayer" controls autoplay playsinline webkit-playsinline controlsList="nodownload" oncontextmenu="return false;"></video>
       </div>
@@ -271,6 +292,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=105.0"></script>
+  <script src="app.js?v=106.0"></script>
 </body>
 </html>
