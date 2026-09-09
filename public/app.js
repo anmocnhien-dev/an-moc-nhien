@@ -22,9 +22,10 @@ let currentMovieEpisodes = [];
 let currentEpisodeIndex = 0;
 let isSwitchingEpisode = false;
 
-// Biến lưu URL video đang phát hiện tại và instance Plyr
+// Biến lưu URL video đang phát hiện tại và instance Plyr/Timer
 window.currentPlayingUrl = '';
 let currentPlyrInstance = null;
+let ytSyncTimer = null;
 
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
@@ -151,7 +152,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP (MASKING YOUTUBE & HỖ TRỢ ĐA NỀN TẢNG)
+// 2. PHÁT PHIM & ĐIỀU HƯỚNG TẬP
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -171,18 +172,33 @@ function playNextEpisode() {
   }
 }
 
+function formatPlayerTime(seconds) {
+  if (isNaN(seconds) || seconds < 0) return '00:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 function setVideoSource(url) {
   window.currentPlayingUrl = url || '';
   const playerBox = document.querySelector('.player-box');
   if (!playerBox) return;
 
+  // Dọn dẹp timer đồng bộ cũ
+  if (ytSyncTimer) {
+    clearInterval(ytSyncTimer);
+    ytSyncTimer = null;
+  }
+
   // Dọn dẹp instance Plyr cũ nếu có
   if (currentPlyrInstance) {
     try {
       currentPlyrInstance.destroy();
-    } catch (e) {
-      console.warn('Lỗi giải phóng Plyr:', e);
-    }
+    } catch (e) {}
     currentPlyrInstance = null;
   }
 
@@ -191,7 +207,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. NHẬN DIỆN & MASKING YOUTUBE (XÓA SẠCH CHỮ YOUTUBE, TIÊU ĐỀ, KÊNH VÀ BLOCKED CLICK NGOÀI)
+  // 1. NHẬN DIỆN & PHÁT YOUTUBE VỚI CUSTOM CONTROLS (TẮT SẠCH LOGO, TẮT PHỤ ĐỀ, CÓ TUA 10S)
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     let videoId = '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -201,30 +217,185 @@ function setVideoSource(url) {
     }
 
     playerBox.innerHTML = `
-      <div style="position: relative; width: 100%; height: 100%; overflow: hidden; background: #000;">
-        <!-- Iframe kéo giãn viền: top -65px giấu tiêu đề/kênh, height giãn dài giấu nút YouTube góc phải -->
+      <div id="ytCustomWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
+        <!-- controls=0: Ẩn hoàn toàn thanh điều khiển, logo YouTube và menu share/kênh -->
+        <!-- cc_load_policy=0: Tắt phụ đề dịch tự động -->
         <iframe 
-          id="videoPlayer"
-          src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1&fs=0&disablekb=0" 
-          style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 125px); border: none; display: block;" 
-          allow="autoplay; encrypted-media; picture-in-picture" 
-          allowfullscreen>
+          id="ytPlayerIframe"
+          src="https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&playsinline=1&disablekb=1&fs=0" 
+          style="width: 100%; height: 100%; border: none; display: block; pointer-events: none;" 
+          allow="autoplay; encrypted-media">
         </iframe>
 
-        <!-- Lớp kính che góc trên: Ngăn bấm vào tên kênh/avatar/nút share nhảy sang YouTube -->
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; z-index: 10; cursor: default;"></div>
+        <!-- Lớp click trực tiếp trên màn hình để Play / Pause -->
+        <div id="ytClickCatcher" style="position: absolute; inset: 0; bottom: 56px; z-index: 10; cursor: pointer;"></div>
 
-        <!-- Lớp kính che góc dưới bên phải: Ngăn bấm vào logo YouTube/video liên quan -->
-        <div style="position: absolute; bottom: 0; right: 0; width: 150px; height: 50px; z-index: 10; cursor: default;"></div>
+        <!-- Thanh điều khiển riêng chuẩn web phim -->
+        <div id="ytControlsBar" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 52px; background: linear-gradient(transparent, rgba(0,0,0,0.92)); display: flex; flex-direction: column; justify-content: flex-end; padding: 0 16px 8px; z-index: 20; box-sizing: border-box; transition: opacity 0.3s ease;">
+          
+          <!-- Thanh tua tiến độ -->
+          <div style="width: 100%; margin-bottom: 6px; display: flex; align-items: center;">
+            <input type="range" id="ytProgressBar" min="0" max="100" value="0" step="0.1" style="width: 100%; cursor: pointer; accent-color: #e50914; height: 4px;">
+          </div>
+
+          <!-- Các nút thao tác -->
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <button id="btnYtPlayPause" style="background: none; border: none; color: #fff; font-size: 1.25rem; cursor: pointer; padding: 0;">⏸</button>
+              
+              <!-- Nút lùi 10 giây -->
+              <button id="btnYtRewind" title="Lùi 10 giây" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; border-radius: 4px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 3px;">
+                ◀◀ 10s
+              </button>
+              
+              <!-- Nút tiến 10 giây -->
+              <button id="btnYtForward" title="Tiến 10 giây" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; border-radius: 4px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 3px;">
+                10s ▶▶
+              </button>
+
+              <button id="btnYtMute" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; padding: 0;">🔊</button>
+              
+              <!-- Thời gian hiện tại / Tổng thời lượng -->
+              <span id="ytTimeDisplay" style="color: #d1d5db; font-size: 0.85rem; font-family: monospace;">00:00 / --:--</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button id="btnYtFull" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.15rem; cursor: pointer;">⛶</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+
+    const iframe = document.getElementById('ytPlayerIframe');
+    const sendCmd = (func, args = []) => {
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
+      }
+    };
+
+    let isPlaying = true;
+    let isMuted = false;
+    let videoDuration = 0;
+    let videoCurrentTime = 0;
+
+    const playBtn = document.getElementById('btnYtPlayPause');
+    const togglePlay = () => {
+      if (isPlaying) {
+        sendCmd('pauseVideo');
+        if (playBtn) playBtn.textContent = '▶';
+      } else {
+        sendCmd('playVideo');
+        if (playBtn) playBtn.textContent = '⏸';
+      }
+      isPlaying = !isPlaying;
+    };
+
+    if (playBtn) playBtn.onclick = togglePlay;
+    const catcher = document.getElementById('ytClickCatcher');
+    if (catcher) catcher.onclick = togglePlay;
+
+    // Bắt sự kiện phím tắt khi xem video
+    document.onkeydown = (e) => {
+      const modal = document.getElementById('playerModal');
+      if (modal && modal.style.display === 'block') {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.code === 'ArrowLeft') {
+          sendCmd('seekBy', [-10]);
+        } else if (e.code === 'ArrowRight') {
+          sendCmd('seekBy', [10]);
+        }
+      }
+    };
+
+    // Gắn lệnh nút tua 10 giây
+    const rewBtn = document.getElementById('btnYtRewind');
+    if (rewBtn) rewBtn.onclick = () => sendCmd('seekBy', [-10]);
+
+    const fwdBtn = document.getElementById('btnYtForward');
+    if (fwdBtn) fwdBtn.onclick = () => sendCmd('seekBy', [10]);
+
+    // Bật/tắt tiếng
+    const muteBtn = document.getElementById('btnYtMute');
+    if (muteBtn) {
+      muteBtn.onclick = () => {
+        if (isMuted) {
+          sendCmd('unMute');
+          muteBtn.textContent = '🔊';
+        } else {
+          sendCmd('mute');
+          muteBtn.textContent = '🔇';
+        }
+        isMuted = !isMuted;
+      };
+    }
+
+    // Toàn màn hình
+    const fullBtn = document.getElementById('btnYtFull');
+    if (fullBtn) {
+      fullBtn.onclick = () => {
+        const wrapper = document.getElementById('ytCustomWrapper');
+        if (!document.fullscreenElement) {
+          wrapper.requestFullscreen().catch(err => console.warn(err));
+        } else {
+          document.exitFullscreen();
+        }
+      };
+    }
+
+    // Lắng nghe dữ liệu phản hồi từ YouTube Iframe API
+    const handleYtMessage = (event) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.info) {
+          if (typeof data.info.duration === 'number' && data.info.duration > 0) {
+            videoDuration = data.info.duration;
+          }
+          if (typeof data.info.currentTime === 'number') {
+            videoCurrentTime = data.info.currentTime;
+            const progress = document.getElementById('ytProgressBar');
+            const timeDisplay = document.getElementById('ytTimeDisplay');
+            if (progress && videoDuration > 0) {
+              progress.value = (videoCurrentTime / videoDuration) * 100;
+            }
+            if (timeDisplay) {
+              timeDisplay.textContent = `${formatPlayerTime(videoCurrentTime)} / ${formatPlayerTime(videoDuration)}`;
+            }
+          }
+          if (data.info.playerState === 0) {
+            playNextEpisode();
+          }
+        }
+      } catch (err) {}
+    };
+
+    window.removeEventListener('message', handleYtMessage);
+    window.addEventListener('message', handleYtMessage);
+
+    // Kéo thanh tiến độ để tua đến vị trí mong muốn
+    const progressBar = document.getElementById('ytProgressBar');
+    if (progressBar) {
+      progressBar.oninput = (e) => {
+        if (videoDuration > 0) {
+          const seekToSeconds = (e.target.value / 100) * videoDuration;
+          sendCmd('seekTo', [seekToSeconds, true]);
+        }
+      };
+    }
+
+    // Chu kỳ gửi lệnh lắng nghe tiến độ phát
+    ytSyncTimer = setInterval(() => {
+      sendCmd('listening');
+    }, 500);
+
     return;
   }
 
   // 2. Nhận diện và nhúng link DoodStream / Playmogo / Streamwish
   if (url.includes('dood') || url.includes('ds2play') || url.includes('playmogo') || url.includes('streamwish') || url.includes('/e/')) {
     let embedUrl = url;
-    // Tự động chuyển link tải /d/ thành link nhúng /e/
     if (embedUrl.includes('/d/')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
     }
@@ -303,7 +474,6 @@ async function openMovie(movieId) {
       document.getElementById('modalMovieTitle').textContent = movie.title;
       document.getElementById('modalMovieDesc').textContent = movie.description || 'Chưa có mô tả.';
 
-      // Cập nhật tiêu đề trên thanh điều khiển toàn màn hình nếu có
       const fsTitle = document.getElementById('fsMovieTitle');
       if (fsTitle) fsTitle.textContent = movie.title;
 
@@ -348,10 +518,13 @@ if (closeModalBtn) {
   closeModalBtn.addEventListener('click', () => {
     const modal = document.getElementById('playerModal');
     
-    // Tắt toàn màn hình nếu đang bật khi đóng modal
     document.body.classList.remove('is-fullscreen-mode');
     
-    // Hủy trình phát Plyr khi tắt popup
+    if (ytSyncTimer) {
+      clearInterval(ytSyncTimer);
+      ytSyncTimer = null;
+    }
+
     if (currentPlyrInstance) {
       try {
         currentPlyrInstance.destroy();
@@ -662,7 +835,7 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH NỔI (CHỐNG BỊ IFRAME ĐÈ)
+// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH NỔI
 // ==========================================
 window.toggleCustomFullscreen = function() {
   const isFull = document.body.classList.toggle('is-fullscreen-mode');
@@ -685,7 +858,6 @@ window.toggleCustomFullscreen = function() {
   }
 };
 
-// Thoát thẳng về trang chủ bất kể đang ở chế độ nào
 window.exitToHomeDirectly = function() {
   document.body.classList.remove('is-fullscreen-mode');
   const btn = document.getElementById('btnFullscreen');
