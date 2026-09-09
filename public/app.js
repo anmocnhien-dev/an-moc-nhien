@@ -447,35 +447,18 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Xoay Ngang Màn Hình (Mobile & Desktop)
+    // Nút Xoay Ngang Màn Hình cưỡng chế CSS (Chạy chuẩn 100% trên iPhone/iPad & Android)
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
-      rotateBtn.onclick = async () => {
-        const wrapper = document.getElementById('ytWrapper');
-        try {
-          const isFull = document.fullscreenElement || document.webkitFullscreenElement;
-          if (!isFull) {
-            if (wrapper.requestFullscreen) {
-              await wrapper.requestFullscreen();
-            } else if (wrapper.webkitRequestFullscreen) {
-              await wrapper.webkitRequestFullscreen();
-            }
-            if (screen.orientation && screen.orientation.lock) {
-              await screen.orientation.lock('landscape').catch(() => {});
-            }
-          } else {
-            if (screen.orientation && screen.orientation.unlock) {
-              screen.orientation.unlock();
-            }
-            if (document.exitFullscreen) {
-              await document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-              await document.webkitExitFullscreen();
-            }
-          }
-        } catch (err) {
-          console.warn('Thiết bị không hỗ trợ khóa xoay:', err);
-        }
+      rotateBtn.onclick = (e) => {
+        e.stopPropagation();
+        const modalContent = document.querySelector('.modal-content');
+        if (!modalContent) return;
+
+        // Bật/tắt class xoay ngang CSS không bị iOS cướp trình phát
+        const isRotated = modalContent.classList.toggle('is-rotated-landscape');
+        rotateBtn.style.color = isRotated ? '#e50914' : '#ffffff';
+        rotateBtn.style.borderColor = isRotated ? '#e50914' : '#3f3f46';
       };
     }
 
@@ -629,6 +612,12 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
+
+    // Tắt luôn chế độ xoay ngang nếu modal đóng
+    const modalContent = document.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.classList.remove('is-rotated-landscape');
+    }
     
     if (ytSyncInterval) {
       clearInterval(ytSyncInterval);
