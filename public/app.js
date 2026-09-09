@@ -219,7 +219,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 1. NHẬN DIỆN & PHÁT YOUTUBE CHUẨN API (CẮT BỎ LOGO, TẮT PHỤ ĐỀ, NÚT TUA 10S, XOAY MÀN HÌNH)
+  // 1. NHẬN DIỆN & PHÁT YOUTUBE CHUẨN API
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     let videoId = '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -230,7 +230,7 @@ function setVideoSource(url) {
 
     playerBox.innerHTML = `
       <div id="ytWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
-        <!-- Khung cắt mép viền: Thu nhỏ 120% để đẩy dải tiêu đề và logo YouTube hoàn toàn ra khỏi vùng nhìn -->
+        <!-- Khung cắt mép viền: Thu nhỏ để giấu dải tiêu đề và logo YouTube -->
         <div style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 130px); pointer-events: none;">
           <div id="ytIframeTarget" style="width: 100%; height: 100%;"></div>
         </div>
@@ -238,7 +238,7 @@ function setVideoSource(url) {
         <!-- Vùng click trực tiếp lên màn hình để Play/Pause -->
         <div id="ytCenterClick" style="position: absolute; inset: 0; bottom: 58px; z-index: 10; cursor: pointer;"></div>
 
-        <!-- Thanh điều khiển riêng biệt của An Mộc Nhiên -->
+        <!-- Thanh điều khiển riêng biệt -->
         <div id="customControlsBar" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 56px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); display: flex; flex-direction: column; justify-content: flex-end; padding: 0 16px 10px; z-index: 20; box-sizing: border-box;">
           
           <!-- Thanh tua phân cảnh -->
@@ -268,8 +268,8 @@ function setVideoSource(url) {
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px;">
-              <!-- Nút xoay ngang màn hình -->
-              <button id="btnRotateScreen" title="Xoay ngang màn hình" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.9rem; cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px;">
+              <!-- Nút xoay ngang / toàn màn hình -->
+              <button id="btnRotateScreen" title="Toàn màn hình ngang" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.9rem; cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px;">
                 ⟲
               </button>
               <!-- Nút Toàn màn hình -->
@@ -448,25 +448,27 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Xoay Ngang Màn Hình (Tự kích hoạt toàn màn hình và xoay 90 độ phủ kín điện thoại)
+    // Nút Xoay Ngang / Toàn màn hình chuẩn (Mobile & Desktop)
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
-      rotateBtn.onclick = (e) => {
+      rotateBtn.onclick = async (e) => {
         e.stopPropagation();
-        const isRotated = document.body.classList.toggle('is-rotated-landscape');
-        if (isRotated) {
-          document.body.classList.add('is-fullscreen-mode');
-          rotateBtn.style.color = '#e50914';
-          rotateBtn.style.borderColor = '#e50914';
-        } else {
-          rotateBtn.style.color = '#ffffff';
-          rotateBtn.style.borderColor = '#3f3f46';
+        if (typeof window.toggleCustomFullscreen === 'function') {
+          window.toggleCustomFullscreen();
         }
-        window.scrollTo(0, 0);
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            if (document.body.classList.contains('is-fullscreen-mode')) {
+              await screen.orientation.lock('landscape').catch(() => {});
+            } else {
+              screen.orientation.unlock();
+            }
+          }
+        } catch (err) {}
       };
     }
 
-    // Nút Toàn màn hình (Hoạt động mượt mà trên cả iPhone, iPad và PC)
+    // Nút Toàn màn hình
     const fullBtn = document.getElementById('btnFullscreenCustom');
     if (fullBtn) {
       fullBtn.onclick = (e) => {
@@ -606,13 +608,6 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
-    document.body.classList.remove('is-rotated-landscape');
-
-    const rotateBtn = document.getElementById('btnRotateScreen');
-    if (rotateBtn) {
-      rotateBtn.style.color = '#ffffff';
-      rotateBtn.style.borderColor = '#3f3f46';
-    }
     
     if (ytSyncInterval) {
       clearInterval(ytSyncInterval);
@@ -939,11 +934,6 @@ if (userLoginForm) {
 // ==========================================
 window.toggleCustomFullscreen = function() {
   const isFull = document.body.classList.toggle('is-fullscreen-mode');
-  // Khi tắt toàn màn hình thì tắt luôn xoay ngang
-  if (!isFull) {
-    document.body.classList.remove('is-rotated-landscape');
-  }
-
   const btn = document.getElementById('btnFullscreen');
   const fsTitle = document.getElementById('fsMovieTitle');
   const modalTitle = document.getElementById('modalMovieTitle');
@@ -965,7 +955,6 @@ window.toggleCustomFullscreen = function() {
 
 window.exitToHomeDirectly = function() {
   document.body.classList.remove('is-fullscreen-mode');
-  document.body.classList.remove('is-rotated-landscape');
   const btn = document.getElementById('btnFullscreen');
   if (btn) {
     btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
