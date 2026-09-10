@@ -23,6 +23,14 @@ let isSwitchingEpisode = false;
 window.currentPlayingUrl = '';
 let art = null; // Biến lưu instance ArtPlayer
 
+// CHẶN NHẢY TAB QUẢNG CÁO TỪ BÊN NGOÀI
+try {
+  window.open = function () {
+    console.warn('Đã chặn mở tab mới ngoài ý muốn.');
+    return null;
+  };
+} catch (e) {}
+
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
 // ==========================================
@@ -170,7 +178,6 @@ function setVideoSource(url) {
   const container = document.getElementById('artPlayerContainer');
   if (!container) return;
 
-  // Hủy instance ArtPlayer cũ nếu đang chạy
   if (art && typeof art.destroy === 'function') {
     art.destroy(false);
     art = null;
@@ -182,7 +189,7 @@ function setVideoSource(url) {
 
   let cleanUrl = url.trim();
 
-  // 1. Tự động bóc tách link src nếu người dùng lỡ dán nguyên cả thẻ iframe
+  // Bóc tách link src nếu người dùng dán thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -190,7 +197,6 @@ function setVideoSource(url) {
     }
   }
 
-  // 2. Nhận diện các dịch vụ cung cấp video nhúng (Byse, Filemoon, Drive, Dood...)
   const isIframeProvider = 
     cleanUrl.includes('byse') ||
     cleanUrl.includes('filemoon') ||
@@ -208,18 +214,17 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL, chỉ lấy đúng domain + /e/ + ID video để không bị lỗi 404
-      const byseMatch = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/);
-      if (byseMatch && byseMatch[1]) {
-        embedUrl = byseMatch[1];
+      // Cắt gọn URL chỉ giữ domain + /e/ + ID (loại bỏ tiếng Việt có dấu tránh 404)
+      const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
+      if (match && match[1]) {
+        embedUrl = match[1];
       }
     } else if (cleanUrl.includes('/d/')) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // TỐI ƯU KHUNG CHO MOBILE & CHẶN CƯỚP TRANG:
-    // - Tỉ lệ padding-bottom 56.25% chuẩn khung hình 16:9
-    // - sandbox không chứa allow-top-navigation giúp bảo vệ trang web chính khỏi bị cướp
+    // GỠ HOÀN TOÀN sandbox ĐỂ BYSE KHÔNG CHẶN 404
+    // Duy trì playsinline và webkit-playsinline để phát native trên di động
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
         <iframe 
@@ -227,32 +232,42 @@ function setVideoSource(url) {
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
         </iframe>
       </div>
     `;
+
+    // Khống chế việc mobile bị mất kiểm soát khi chạm vào iframe
+    const iframeEl = document.getElementById('playerIframe');
+    if (iframeEl) {
+      window.onblur = function () {
+        setTimeout(() => {
+          window.focus();
+        }, 100);
+      };
+    }
+
     return;
   }
 
-  // 3. Khởi tạo ArtPlayer cho link phát trực tiếp (MP4 / M3U8)
+  // Khởi tạo ArtPlayer cho MP4 / M3U8
   art = new Artplayer({
     container: '#artPlayerContainer',
     url: cleanUrl,
     autoplay: true,
-    autoOrientation: true,   // Tự xoay ngang màn hình khi fullscreen trên điện thoại
-    fullscreen: true,        // Nút toàn màn hình native
-    fullscreenWeb: true,     // Nút toàn màn hình web
-    setting: true,           // Nút cài đặt
-    playbackRate: true,      // Chỉnh tốc độ
-    aspectRatio: true,       // Chỉnh tỉ lệ 16:9, 4:3
-    pip: true,               // Picture in Picture
-    autoPlayback: true,      // Nhớ thời gian xem
-    playsinline: true,       // Xem trực tiếp trên Safari iOS
+    autoOrientation: true,
+    fullscreen: true,
+    fullscreenWeb: true,
+    setting: true,
+    playbackRate: true,
+    aspectRatio: true,
+    pip: true,
+    autoPlayback: true,
+    playsinline: true,
     airplay: true,
-    theme: '#e50914',        // Màu đỏ giao diện
+    theme: '#e50914',
     icons: {
       loading: '<div style="color: #e50914;">Đang tải...</div>',
     },
@@ -276,7 +291,6 @@ function setVideoSource(url) {
     ],
   });
 
-  // Tự chuyển tập khi video kết thúc
   art.on('video:ended', () => {
     playNextEpisode();
   });
@@ -645,7 +659,6 @@ if (userLoginForm) {
   };
 }
 
-// Thoát nhanh bằng phím ESC
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const modal = document.getElementById('playerModal');
