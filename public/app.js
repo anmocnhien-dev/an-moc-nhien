@@ -145,7 +145,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. KHỞI TẠO ARTPLAYER CHUẨN ĐỘ MƯỢT NHƯ HHTQ
+// 2. KHỞI TẠO ARTPLAYER & NGUỒN PHÁT TỰ ĐỘNG
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -180,14 +180,34 @@ function setVideoSource(url) {
 
   if (!url) return;
 
-  // Nguồn nhúng Google Drive hoặc Doodstream
-  if (url.includes('drive.google.com') || url.includes('dood') || url.includes('ds2play') || url.includes('streamwish')) {
-    let embedUrl = url;
-    if (url.includes('drive.google.com')) {
-      const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-      embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : url;
-    } else if (url.includes('/d/')) {
-      embedUrl = url.replace('/d/', '/e/');
+  let cleanUrl = url.trim();
+
+  // 1. Tự động bóc tách link src nếu người dùng lỡ dán nguyên thẻ iframe
+  if (cleanUrl.includes('<iframe')) {
+    const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
+    if (srcMatch && srcMatch[1]) {
+      cleanUrl = srcMatch[1];
+    }
+  }
+
+  // 2. Danh sách nhận diện các dịch vụ nhúng (Byse, Filemoon, Drive, Dood, Streamwish...)
+  const isIframeProvider = 
+    cleanUrl.includes('byse') ||
+    cleanUrl.includes('filemoon') ||
+    cleanUrl.includes('drive.google.com') ||
+    cleanUrl.includes('dood') ||
+    cleanUrl.includes('ds2play') ||
+    cleanUrl.includes('/e/') || 
+    cleanUrl.includes('streamwish');
+
+  if (isIframeProvider) {
+    let embedUrl = cleanUrl;
+
+    if (cleanUrl.includes('drive.google.com')) {
+      const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
+    } else if (cleanUrl.includes('/d/')) {
+      embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
     container.innerHTML = `
@@ -201,22 +221,22 @@ function setVideoSource(url) {
     return;
   }
 
-  // Khởi tạo ArtPlayer cho link trực tiếp (MP4 / M3U8)
+  // 3. Khởi tạo ArtPlayer cho link trực tiếp (MP4 / M3U8)
   art = new Artplayer({
     container: '#artPlayerContainer',
-    url: url,
+    url: cleanUrl,
     autoplay: true,
-    autoOrientation: true,   // TỰ ĐỘNG XOAY NGANG MÀN HÌNH KHI FULLSCREEN TRÊN ĐIỆN THOẠI
+    autoOrientation: true,   // Tự xoay ngang màn hình khi fullscreen trên điện thoại
     fullscreen: true,        // Nút toàn màn hình native
     fullscreenWeb: true,     // Nút toàn màn hình web
-    setting: true,           // Nút cài đặt (tốc độ, xoay)
-    playbackRate: true,      // Chỉnh tốc độ 0.5x, 1x, 1.25x, 2x
+    setting: true,           // Nút cài đặt
+    playbackRate: true,      // Chỉnh tốc độ
     aspectRatio: true,       // Chỉnh tỉ lệ 16:9, 4:3
     pip: true,               // Picture in Picture
-    autoPlayback: true,      // Tự động nhớ thời gian xem
+    autoPlayback: true,      // Nhớ thời gian xem
     playsinline: true,       // Xem trực tiếp trên Safari iOS
     airplay: true,
-    theme: '#e50914',        // Màu đỏ đồng bộ website
+    theme: '#e50914',        // Màu đỏ giao diện
     icons: {
       loading: '<div style="color: #e50914;">Đang tải...</div>',
     },
