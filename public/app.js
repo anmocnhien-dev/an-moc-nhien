@@ -182,7 +182,7 @@ function setVideoSource(url) {
 
   let cleanUrl = url.trim();
 
-  // 1. Tự động bóc tách link src nếu người dùng lỡ dán nguyên thẻ iframe
+  // 1. Tự động bóc tách link src nếu người dùng lỡ dán nguyên cả thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -190,7 +190,7 @@ function setVideoSource(url) {
     }
   }
 
-  // 2. Danh sách nhận diện các dịch vụ nhúng (Byse, Filemoon, Drive, Dood, Streamwish...)
+  // 2. Nhận diện các dịch vụ cung cấp video nhúng (Byse, Filemoon, Drive, Dood...)
   const isIframeProvider = 
     cleanUrl.includes('byse') ||
     cleanUrl.includes('filemoon') ||
@@ -207,21 +207,34 @@ function setVideoSource(url) {
       const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('/d/')) {
+      // Tự sửa link /d/ sang /e/ nếu copy nhầm link tải
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
+    // BẬT LỚP PHÒNG THỦ CHỐNG NHẢY TAB & QUẢNG CÁO TRÊN ĐIỆN THOẠI:
+    // - sandbox: Cho phép script và cùng nguồn gốc, TUYỆT ĐỐI KHÔNG cấp phép `allow-popups` và `allow-top-navigation`
+    // - playsinline & webkit-playsinline: Giữ khung hình phát gọn gàng trên mobile, không bị Safari bật ra ngoài
     container.innerHTML = `
-      <iframe 
-        src="${embedUrl}" 
-        style="width: 100%; height: 100%; border: none;" 
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
-        allowfullscreen>
-      </iframe>
+      <div style="position: relative; width: 100%; height: 100%; min-height: 230px; overflow: hidden; background: #000;">
+        <iframe 
+          id="playerIframe"
+          src="${embedUrl}" 
+          style="width: 100%; height: 100%; border: none; display: block;" 
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+          sandbox="allow-scripts allow-same-origin allow-forms"
+          playsinline 
+          webkit-playsinline 
+          allowfullscreen>
+        </iframe>
+      </div>
     `;
+
+    // Chặn bắt sự kiện window.open từ client nếu iframe cố gắng gọi ra ngoài web cha
+    window.onbeforeunload = null;
     return;
   }
 
-  // 3. Khởi tạo ArtPlayer cho link trực tiếp (MP4 / M3U8)
+  // 3. Khởi tạo ArtPlayer cho link phát trực tiếp (MP4 / M3U8)
   art = new Artplayer({
     container: '#artPlayerContainer',
     url: cleanUrl,
