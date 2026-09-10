@@ -206,22 +206,25 @@ function setVideoSource(url) {
     if (cleanUrl.includes('drive.google.com')) {
       const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
+    } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
+      embedUrl = embedUrl.replace('/d/', '/e/');
+      // Cắt gọn URL, chỉ lấy đúng domain + /e/ + ID video để không bị lỗi 404
+      const byseMatch = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/);
+      if (byseMatch && byseMatch[1]) {
+        embedUrl = byseMatch[1];
+      }
     } else if (cleanUrl.includes('/d/')) {
-      // Tự sửa link /d/ sang /e/ nếu copy nhầm link tải
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Mã hóa URL sạch sẽ cho iOS / Android
-    const safeUrl = encodeURI(embedUrl);
-
-    // CẤU TRÚC PHÒNG THỦ CHUYÊN DỤNG CHO MOBILE:
-    // - Cho phép script chạy video nhưng chặn pop-up và cấm điều hướng top-page
-    // - Bổ sung sandbox có chọn lọc kèm sandbox-by-token để mobile không bị văng
+    // TỐI ƯU KHUNG CHO MOBILE & CHẶN CƯỚP TRANG:
+    // - Tỉ lệ padding-bottom 56.25% chuẩn khung hình 16:9
+    // - sandbox không chứa allow-top-navigation giúp bảo vệ trang web chính khỏi bị cướp
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
         <iframe 
           id="playerIframe"
-          src="${safeUrl}" 
+          src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
           sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
@@ -231,20 +234,6 @@ function setVideoSource(url) {
         </iframe>
       </div>
     `;
-
-    // Chặn cửa sổ popup nhảy ra từ web mẹ khi người dùng click vào khung trên điện thoại
-    const iframeEl = document.getElementById('playerIframe');
-    if (iframeEl) {
-      window.addEventListener('blur', () => {
-        // Nếu user rời trang chính do popup cố tình nhảy, lập tức hủy focus
-        if (document.activeElement === iframeEl) {
-          setTimeout(() => {
-            window.focus();
-          }, 0);
-        }
-      }, { once: true });
-    }
-
     return;
   }
 
