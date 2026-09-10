@@ -219,6 +219,8 @@ header {
 
 .player-box {
   width: 100%;
+  height: 100%;
+  min-height: 250px;
   background: #000;
   aspect-ratio: 16/9;
   position: relative;
@@ -229,6 +231,14 @@ header {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+#ytWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
 }
 
 #ytWrapper iframe {
@@ -321,7 +331,7 @@ header {
   color: #fff;
 }
 
-/* Nút Favorite trên thẻ phim */
+/* Nút Favorite */
 .fav-btn {
   position: absolute;
   top: 10px;
@@ -351,10 +361,7 @@ header {
   border-color: #ff334b;
 }
 
-/* ==========================================
-   CUSTOM PLAYER (YOUTUBE)
-   ========================================== */
-
+/* Custom Player Controls */
 #ytWrapper:hover #customControlsBar {
   opacity: 1 !important;
   pointer-events: auto;
@@ -427,82 +434,47 @@ header {
 }
 
 /* ==========================================
-   CHẾ ĐỘ XEM TOÀN MÀN HÌNH NỔI (MOBILE & DESKTOP)
+   CHẾ ĐỘ XEM TOÀN MÀN HÌNH NỔI (ĐÃ FIX ĐEN)
    ========================================== */
 
-/* 1. Chuẩn hóa cho Desktop vào Native Fullscreen */
-#playerModal:fullscreen .modal-content,
-#playerModal:-webkit-full-screen .modal-content {
+/* 1. Desktop Native Fullscreen: bung trực tiếp player-box */
+.player-box:fullscreen,
+.player-box:-webkit-full-screen {
   width: 100vw !important;
   height: 100vh !important;
   max-width: 100vw !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: #000 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  border: none !important;
-  border-radius: 0 !important;
-}
-
-#playerModal:fullscreen .player-box,
-#playerModal:-webkit-full-screen .player-box {
-  width: 100% !important;
-  height: 100% !important;
+  max-height: 100vh !important;
   aspect-ratio: auto !important;
-  display: block !important;
+  background: #000 !important;
+  z-index: 2147483647 !important;
 }
 
-#playerModal:fullscreen .movie-details,
-#playerModal:fullscreen #commentSection,
-#playerModal:fullscreen .modal-close,
-#playerModal:-webkit-full-screen .movie-details,
-#playerModal:-webkit-full-screen #commentSection,
-#playerModal:-webkit-full-screen .modal-close {
-  display: none !important;
+.player-box:fullscreen #ytCropContainer,
+.player-box:-webkit-full-screen #ytCropContainer {
+  position: absolute !important;
+  top: -60px !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: calc(100% + 120px) !important;
 }
 
-/* 2. Chuẩn hóa cho Điện thoại (is-fullscreen-mode) */
+/* 2. Mobile Fullscreen (Fallback qua class is-fullscreen-mode) */
 body.is-fullscreen-mode {
   overflow: hidden !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: #000 !important;
-}
-
-body.is-fullscreen-mode #playerModal {
-  padding: 0 !important;
-  margin: 0 !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  z-index: 999999 !important;
-  background: #000 !important;
-}
-
-body.is-fullscreen-mode .modal-content {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  background: #000 !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
 body.is-fullscreen-mode .player-box {
-  width: 100% !important;
-  height: 100% !important;
-  flex: 1 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   aspect-ratio: auto !important;
-  position: relative !important;
+  z-index: 2147483647 !important; /* Đè bẹp thanh tiêu đề phim và thanh header */
+  background: #000 !important;
 }
 
 body.is-fullscreen-mode #ytWrapper {
@@ -512,38 +484,10 @@ body.is-fullscreen-mode #ytWrapper {
 
 body.is-fullscreen-mode #ytCropContainer {
   position: absolute !important;
-  top: -65px !important;
-  left: -2% !important;
-  width: 104% !important;
-  height: calc(100% + 130px) !important;
-}
-
-/* Ẩn triệt để toàn bộ thanh header, tiêu đề phim, nút và bình luận khi ở chế độ Fullscreen */
-body.is-fullscreen-mode header,
-body.is-fullscreen-mode .hero,
-body.is-fullscreen-mode .genre-filter,
-body.is-fullscreen-mode .container,
-body.is-fullscreen-mode .movie-details,
-body.is-fullscreen-mode #commentSection,
-body.is-fullscreen-mode .modal-close,
-body.is-fullscreen-mode #fsTitleBar,
-body.is-fullscreen-mode [id*="fsTitle"],
-body.is-fullscreen-mode [id*="fsHeader"],
-body.is-fullscreen-mode [class*="fs-header"],
-body.is-fullscreen-mode [class*="fs-title"],
-body.is-fullscreen-mode .modal-content > *:not(.player-box),
-body.is-fullscreen-mode .modal > *:not(.modal-content),
-body.is-fullscreen-mode button[onclick*="toggleCustomFullscreen"],
-body.is-fullscreen-mode button[onclick*="exitToHomeDirectly"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
+  top: -60px !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: calc(100% + 120px) !important;
 }
 
 /* ==========================================
