@@ -228,49 +228,36 @@ function setVideoSource(url) {
 
     playerBox.innerHTML = `
       <div id="ytWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
-        <!-- Khung cắt mép viền video YouTube -->
         <div id="ytCropContainer" style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 130px); pointer-events: none;">
           <div id="ytIframeTarget" style="width: 100%; height: 100%;"></div>
         </div>
 
-        <!-- Vùng click trực tiếp lên màn hình để Play/Pause -->
         <div id="ytCenterClick" style="position: absolute; inset: 0; bottom: 58px; z-index: 10; cursor: pointer;"></div>
 
-        <!-- Thanh điều khiển riêng biệt -->
         <div id="customControlsBar" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 56px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); display: flex; flex-direction: column; justify-content: flex-end; padding: 0 16px 10px; z-index: 20; box-sizing: border-box;">
-          
-          <!-- Thanh tua phân cảnh -->
           <div style="width: 100%; margin-bottom: 6px;">
             <input type="range" id="customSeekSlider" min="0" max="100" value="0" step="0.1" 
               style="width: 100%; cursor: pointer; accent-color: #e50914; height: 5px; margin: 0; display: block;">
           </div>
 
-          <!-- Dãy nút điều khiển -->
           <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
             <div style="display: flex; align-items: center; gap: 12px;">
               <button id="btnPlayPauseCustom" style="background: none; border: none; color: #fff; font-size: 1.3rem; cursor: pointer; padding: 0; width: 28px;">⏸</button>
-              
-              <!-- Nút lùi 10 giây -->
               <button id="btnRewind10" title="Lùi 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
                 ◀◀ 10s
               </button>
-              
-              <!-- Nút tiến 10 giây -->
               <button id="btnForward10" title="Tiến 10s" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
                 10s ▶▶
               </button>
-
               <button id="btnMuteCustom" style="background: none; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; padding: 0;">🔊</button>
               <button id="btnCcToggle" title="Bật/Tắt phụ đề" style="background: #27272a; border: 1px solid #3f3f46; color: #9ca3af; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-radius: 4px; padding: 3px 7px;">CC</button>
               <span id="customTimeText" style="color: #e4e4e7; font-size: 0.85rem; font-family: monospace;">00:00 / 00:00</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px;">
-              <!-- Nút xoay ngang / toàn màn hình -->
               <button id="btnRotateScreen" title="Toàn màn hình ngang" style="background: #27272a; border: 1px solid #3f3f46; color: #fff; font-size: 0.9rem; cursor: pointer; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px;">
                 ⟲
               </button>
-              <!-- Nút Toàn màn hình -->
               <button id="btnFullscreenCustom" title="Toàn màn hình" style="background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;">⛶</button>
             </div>
           </div>
@@ -437,7 +424,6 @@ function setVideoSource(url) {
       };
     }
 
-    // Gán hàm vào nút Xoay Ngang và Toàn Màn Hình
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
       rotateBtn.onclick = (e) => {
@@ -583,8 +569,6 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
-
-    // Khôi phục lại thanh tiêu đề nếu bị ẩn
     restoreHeaderBars();
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -913,17 +897,26 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// 6. XỬ LÝ ẨN/HIỆN THANH CÔNG CỤ & FULLSCREEN TRIỆT ĐỂ
+// 6. XỬ LÝ ẨN/HIỆN THANH CÔNG CỤ & FULLSCREEN AN TOÀN
 // ==========================================
 function hideHeaderBars() {
-  // Tìm bất kỳ thanh nào chứa nút "Về Trang Chủ" hoặc "Thu nhỏ" để ép ẩn trực tiếp
   const modal = document.getElementById('playerModal');
   if (!modal) return;
   
+  // Ẩn tất cả các thanh tiêu đề/nút nằm ngoài player-box
+  const elements = modal.querySelectorAll('#fsTitleBar, [id*="fsMovieTitle"], [id*="modalMovieTitle"]');
+  elements.forEach(el => {
+    const parentBar = el.closest('div');
+    if (parentBar && !parentBar.classList.contains('player-box') && !parentBar.closest('.player-box')) {
+      parentBar.dataset.oldDisplay = parentBar.style.display || '';
+      parentBar.style.setProperty('display', 'none', 'important');
+    }
+  });
+
   const allElements = modal.querySelectorAll('div, header, nav');
   allElements.forEach(el => {
     if (el.classList.contains('player-box') || el.closest('.player-box')) return;
-    if (el.textContent.includes('Về Trang Chủ') || el.textContent.includes('Thu nhỏ') || el.id === 'fsTitleBar') {
+    if (el.textContent.includes('Về Trang Chủ') || el.textContent.includes('Thu nhỏ')) {
       el.dataset.oldDisplay = el.style.display || '';
       el.style.setProperty('display', 'none', 'important');
     }
@@ -933,6 +926,18 @@ function hideHeaderBars() {
 function restoreHeaderBars() {
   const modal = document.getElementById('playerModal');
   if (!modal) return;
+
+  const elements = modal.querySelectorAll('#fsTitleBar, [id*="fsMovieTitle"], [id*="modalMovieTitle"]');
+  elements.forEach(el => {
+    const parentBar = el.closest('div');
+    if (parentBar && !parentBar.classList.contains('player-box') && !parentBar.closest('.player-box')) {
+      parentBar.style.removeProperty('display');
+      if (parentBar.dataset.oldDisplay !== undefined) {
+        parentBar.style.display = parentBar.dataset.oldDisplay;
+        delete parentBar.dataset.oldDisplay;
+      }
+    }
+  });
 
   const allElements = modal.querySelectorAll('div, header, nav');
   allElements.forEach(el => {
@@ -944,13 +949,9 @@ function restoreHeaderBars() {
 }
 
 const triggerPlayerFullscreen = async () => {
-  const playerBox = document.querySelector('.player-box');
-  const isNativeFullscreen = document.fullscreenElement || 
-                             document.webkitFullscreenElement || 
-                             document.mozFullScreenElement || 
-                             document.msFullscreenElement;
+  const isNativeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
 
-  // Nếu đang fullscreen -> Thoát
+  // 1. Thoát Fullscreen
   if (isNativeFullscreen || document.body.classList.contains('is-fullscreen-mode')) {
     if (isNativeFullscreen) {
       if (document.exitFullscreen) await document.exitFullscreen().catch(() => {});
@@ -966,23 +967,23 @@ const triggerPlayerFullscreen = async () => {
     return;
   }
 
-  // Nếu chưa fullscreen -> Vào fullscreen
+  // 2. Kích hoạt Fullscreen
+  const modal = document.getElementById('playerModal');
   let nativeSuccess = false;
-  if (playerBox) {
-    try {
-      if (playerBox.requestFullscreen) {
-        await playerBox.requestFullscreen();
-        nativeSuccess = true;
-      } else if (playerBox.webkitRequestFullscreen) {
-        await playerBox.webkitRequestFullscreen();
-        nativeSuccess = true;
-      }
-    } catch (err) {
-      nativeSuccess = false;
+
+  try {
+    if (modal && modal.requestFullscreen) {
+      await modal.requestFullscreen();
+      nativeSuccess = true;
+    } else if (modal && modal.webkitRequestFullscreen) {
+      await modal.webkitRequestFullscreen();
+      nativeSuccess = true;
     }
+  } catch (err) {
+    nativeSuccess = false;
   }
 
-  // Bật class CSS Fullscreen & ép ẩn thanh công cụ
+  // Kích hoạt chế độ CSS Fullscreen cho Safari iPhone
   document.body.classList.add('is-fullscreen-mode');
   hideHeaderBars();
 
@@ -1010,14 +1011,11 @@ window.exitToHomeDirectly = function() {
   if (closeBtn) closeBtn.click();
 };
 
-// Đồng bộ trạng thái khi xoay màn hình điện thoại
 window.addEventListener('orientationchange', () => {
   if (window.orientation === 90 || window.orientation === -90) {
-    // Khi người dùng tự xoay ngang điện thoại
     document.body.classList.add('is-fullscreen-mode');
     hideHeaderBars();
   } else {
-    // Khi xoay dọc lại
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       document.body.classList.remove('is-fullscreen-mode');
       restoreHeaderBars();
