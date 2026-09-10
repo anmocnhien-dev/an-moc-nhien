@@ -219,8 +219,6 @@ header {
 
 .player-box {
   width: 100%;
-  height: 100%;
-  min-height: 250px;
   background: #000;
   aspect-ratio: 16/9;
   position: relative;
@@ -231,14 +229,6 @@ header {
   width: 100%;
   height: 100%;
   object-fit: contain;
-}
-
-#ytWrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
 }
 
 #ytWrapper iframe {
@@ -331,7 +321,7 @@ header {
   color: #fff;
 }
 
-/* Nút Favorite */
+/* Nút Favorite trên thẻ phim */
 .fav-btn {
   position: absolute;
   top: 10px;
@@ -361,7 +351,10 @@ header {
   border-color: #ff334b;
 }
 
-/* Custom Player Controls */
+/* ==========================================
+   CUSTOM PLAYER (YOUTUBE)
+   ========================================== */
+
 #ytWrapper:hover #customControlsBar {
   opacity: 1 !important;
   pointer-events: auto;
@@ -434,47 +427,60 @@ header {
 }
 
 /* ==========================================
-   CHẾ ĐỘ XEM TOÀN MÀN HÌNH NỔI (ĐÃ FIX ĐEN)
+   CHẾ ĐỘ XEM TOÀN MÀN HÌNH CHUẨN
    ========================================== */
 
-/* 1. Desktop Native Fullscreen: bung trực tiếp player-box */
+/* 1. Tiêu chuẩn Native Fullscreen trên chính .player-box (Desktop & Android) */
 .player-box:fullscreen,
 .player-box:-webkit-full-screen {
   width: 100vw !important;
   height: 100vh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
-  aspect-ratio: auto !important;
   background: #000 !important;
-  z-index: 2147483647 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  aspect-ratio: unset !important;
 }
 
-.player-box:fullscreen #ytCropContainer,
-.player-box:-webkit-full-screen #ytCropContainer {
-  position: absolute !important;
-  top: -60px !important;
-  left: 0 !important;
+.player-box:fullscreen #ytWrapper,
+.player-box:-webkit-full-screen #ytWrapper {
   width: 100% !important;
-  height: calc(100% + 120px) !important;
+  height: 100% !important;
 }
 
-/* 2. Mobile Fullscreen (Fallback qua class is-fullscreen-mode) */
+/* 2. Fallback CSS Fullscreen cho Mobile (Safari iOS) */
 body.is-fullscreen-mode {
   overflow: hidden !important;
+  position: fixed !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  inset: 0 !important;
 }
 
+body.is-fullscreen-mode #mainPlayerBox,
 body.is-fullscreen-mode .player-box {
   position: fixed !important;
+  inset: 0 !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
   width: 100vw !important;
+  width: 100dvw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  aspect-ratio: auto !important;
-  z-index: 2147483647 !important; /* Đè bẹp thanh tiêu đề phim và thanh header */
+  max-width: none !important;
+  max-height: none !important;
+  z-index: 2147483647 !important;
   background: #000 !important;
+  aspect-ratio: unset !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 body.is-fullscreen-mode #ytWrapper {
@@ -488,6 +494,34 @@ body.is-fullscreen-mode #ytCropContainer {
   left: 0 !important;
   width: 100% !important;
   height: calc(100% + 120px) !important;
+}
+
+/* 3. ẨN HOÀN TOÀN TẤT CẢ CÁC THẺ GIAO DIỆN KHÁC KHI FULLSCREEN */
+body.is-fullscreen-mode header,
+body.is-fullscreen-mode .hero,
+body.is-fullscreen-mode .genre-filter,
+body.is-fullscreen-mode .container,
+body.is-fullscreen-mode .movie-details,
+body.is-fullscreen-mode #commentSection,
+body.is-fullscreen-mode .modal-close,
+body.is-fullscreen-mode #fsTitleBar,
+body.is-fullscreen-mode [id*="fsTitle"],
+body.is-fullscreen-mode [id*="fsHeader"],
+body.is-fullscreen-mode [class*="fs-header"],
+body.is-fullscreen-mode [class*="fs-title"],
+body.is-fullscreen-mode .modal-content > *:not(.player-box),
+body.is-fullscreen-mode .modal > *:not(.modal-content),
+body.is-fullscreen-mode button[onclick*="toggleCustomFullscreen"],
+body.is-fullscreen-mode button[onclick*="exitToHomeDirectly"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 /* ==========================================
