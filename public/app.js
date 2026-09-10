@@ -211,22 +211,40 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Mã hóa các ký tự tiếng Việt có dấu trong URL để tránh lỗi 404/redirect
+    // Mã hóa URL sạch sẽ cho iOS / Android
     const safeUrl = encodeURI(embedUrl);
 
+    // CẤU TRÚC PHÒNG THỦ CHUYÊN DỤNG CHO MOBILE:
+    // - Cho phép script chạy video nhưng chặn pop-up và cấm điều hướng top-page
+    // - Bổ sung sandbox có chọn lọc kèm sandbox-by-token để mobile không bị văng
     container.innerHTML = `
-      <div style="position: relative; width: 100%; height: 100%; min-height: 230px; overflow: hidden; background: #000;">
+      <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
         <iframe 
           id="playerIframe"
           src="${safeUrl}" 
-          style="width: 100%; height: 100%; border: none; display: block;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
         </iframe>
       </div>
     `;
+
+    // Chặn cửa sổ popup nhảy ra từ web mẹ khi người dùng click vào khung trên điện thoại
+    const iframeEl = document.getElementById('playerIframe');
+    if (iframeEl) {
+      window.addEventListener('blur', () => {
+        // Nếu user rời trang chính do popup cố tình nhảy, lập tức hủy focus
+        if (document.activeElement === iframeEl) {
+          setTimeout(() => {
+            window.focus();
+          }, 0);
+        }
+      }, { once: true });
+    }
+
     return;
   }
 
