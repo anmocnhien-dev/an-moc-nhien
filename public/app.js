@@ -31,6 +31,14 @@ try {
   };
 } catch (e) {}
 
+// Ngăn chuyển hướng ngoài ý muốn khi player đang mở
+window.addEventListener('beforeunload', () => {
+  const modal = document.getElementById('playerModal');
+  if (modal && modal.style.display === 'block') {
+    window.stop();
+  }
+});
+
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
 // ==========================================
@@ -223,19 +231,17 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // TẠO TẤM KHIÊN CẢM ỨNG (SHIELD) PHỦ LÊN IFRAME TRÊN MOBILE
+    // KHÓA MỞ TAB & CƯỚP TRANG TRÊN DI ĐỘNG BẰNG SANDBOX ĐÚNG CHUẨN
+    // Không có allow-popups: Chặn hoàn toàn lệnh mở tab mới
+    // Không có allow-top-navigation: Ngăn cướp URL trang mẹ
     container.innerHTML = `
-      <div id="playerWrapper" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
-        <div id="mobileAdShield" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);">
-          <div style="background: #2563eb; color: #ffffff; padding: 10px 20px; border-radius: 24px; font-size: 0.95rem; font-weight: bold; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
-            ▶ Nhấn để bắt đầu xem
-          </div>
-        </div>
+      <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden;">
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
@@ -243,27 +249,12 @@ function setVideoSource(url) {
       </div>
     `;
 
-    // Khi người dùng bấm lần đầu, hấp thụ click để chặn mã pop-up mở tab rồi gỡ khiên
-    const shield = document.getElementById('mobileAdShield');
-    if (shield) {
-      const dismissShield = (e) => {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        shield.style.display = 'none';
-      };
-      shield.addEventListener('touchstart', dismissShield, { passive: false });
-      shield.addEventListener('click', dismissShield);
-    }
-
-    // Giữ tiêu điểm trang web không bị đẩy sang ứng dụng khác
     const iframeEl = document.getElementById('playerIframe');
     if (iframeEl) {
       window.onblur = function () {
         setTimeout(() => {
           window.focus();
-        }, 100);
+        }, 80);
       };
     }
 
