@@ -194,7 +194,6 @@ function setVideoSource(url) {
   const playerBox = document.querySelector('.player-box');
   if (!playerBox) return;
 
-  // Dọn dẹp tiến trình YouTube cũ
   if (ytSyncInterval) {
     clearInterval(ytSyncInterval);
     ytSyncInterval = null;
@@ -206,7 +205,6 @@ function setVideoSource(url) {
     ytNativePlayer = null;
   }
 
-  // Dọn dẹp Plyr cũ
   if (currentPlyrInstance) {
     try {
       currentPlyrInstance.destroy();
@@ -231,7 +229,7 @@ function setVideoSource(url) {
     playerBox.innerHTML = `
       <div id="ytWrapper" style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none;">
         <!-- Khung cắt mép viền video YouTube -->
-        <div id="ytCropContainer" style="position: absolute; top: -60px; left: 0; width: 100%; height: calc(100% + 120px); pointer-events: none;">
+        <div id="ytCropContainer" style="position: absolute; top: -65px; left: -2%; width: 104%; height: calc(100% + 130px); pointer-events: none;">
           <div id="ytIframeTarget" style="width: 100%; height: 100%;"></div>
         </div>
 
@@ -282,7 +280,6 @@ function setVideoSource(url) {
 
     let ccEnabled = false;
 
-    // Hàm cưỡng chế tắt phụ đề YouTube
     const disableCaptions = () => {
       if (!ytNativePlayer) return;
       try {
@@ -316,7 +313,6 @@ function setVideoSource(url) {
             disableCaptions();
             event.target.playVideo();
 
-            // Vòng lặp cập nhật thanh tua & thời gian
             ytSyncInterval = setInterval(() => {
               if (ytNativePlayer && typeof ytNativePlayer.getCurrentTime === 'function') {
                 const cur = ytNativePlayer.getCurrentTime() || 0;
@@ -348,14 +344,12 @@ function setVideoSource(url) {
       });
     };
 
-    // Chờ YouTube Iframe API sẵn sàng rồi khởi tạo
     if (window.YT && window.YT.Player) {
       initPlayer();
     } else {
       window.onYouTubeIframeAPIReady = initPlayer;
     }
 
-    // Các sự kiện nút tương tác
     const togglePlay = () => {
       if (!ytNativePlayer || typeof ytNativePlayer.getPlayerState !== 'function') return;
       const state = ytNativePlayer.getPlayerState();
@@ -371,7 +365,6 @@ function setVideoSource(url) {
     const centerClick = document.getElementById('ytCenterClick');
     if (centerClick) centerClick.onclick = togglePlay;
 
-    // Nút Lùi 10s
     const rewBtn = document.getElementById('btnRewind10');
     if (rewBtn) {
       rewBtn.onclick = () => {
@@ -382,7 +375,6 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Tiến 10s
     const fwdBtn = document.getElementById('btnForward10');
     if (fwdBtn) {
       fwdBtn.onclick = () => {
@@ -394,7 +386,6 @@ function setVideoSource(url) {
       };
     }
 
-    // Tua bằng Slider
     const seekSlider = document.getElementById('customSeekSlider');
     if (seekSlider) {
       seekSlider.oninput = (e) => {
@@ -408,7 +399,6 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Bật/Tắt phụ đề CC
     const ccBtn = document.getElementById('btnCcToggle');
     if (ccBtn) {
       ccBtn.onclick = () => {
@@ -433,7 +423,6 @@ function setVideoSource(url) {
       };
     }
 
-    // Nút Bật/Tắt tiếng
     const muteBtn = document.getElementById('btnMuteCustom');
     if (muteBtn) {
       muteBtn.onclick = () => {
@@ -448,50 +437,27 @@ function setVideoSource(url) {
       };
     }
 
-    // Hàm mở toàn màn hình chuẩn (hỗ trợ cả Browser Fullscreen & CSS Fullscreen)
-    const triggerFullView = async () => {
-      const modal = document.getElementById('playerModal');
-      if (typeof window.toggleCustomFullscreen === 'function') {
-        window.toggleCustomFullscreen();
-      }
-
-      // Kích hoạt requestFullscreen của trình duyệt để giấu thanh công cụ trên điện thoại
-      try {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (modal && modal.requestFullscreen) {
-            await modal.requestFullscreen();
-          } else if (modal && modal.webkitRequestFullscreen) {
-            await modal.webkitRequestFullscreen();
-          }
-        }
-        if (screen.orientation && screen.orientation.lock) {
-          await screen.orientation.lock('landscape').catch(() => {});
-        }
-      } catch (err) {}
-    };
-
-    // Nút Xoay Ngang / Toàn màn hình chuẩn
+    // Gán hàm vào nút Xoay Ngang và Toàn Màn Hình
     const rotateBtn = document.getElementById('btnRotateScreen');
     if (rotateBtn) {
       rotateBtn.onclick = (e) => {
         e.stopPropagation();
-        triggerFullView();
+        triggerPlayerFullscreen();
       };
     }
 
-    // Nút Toàn màn hình
     const fullBtn = document.getElementById('btnFullscreenCustom');
     if (fullBtn) {
       fullBtn.onclick = (e) => {
         e.stopPropagation();
-        triggerFullView();
+        triggerPlayerFullscreen();
       };
     }
 
     return;
   }
 
-  // 2. Nhận diện và nhúng link DoodStream / Playmogo / Streamwish
+  // 2. DoodStream / Playmogo / Streamwish
   if (url.includes('dood') || url.includes('ds2play') || url.includes('playmogo') || url.includes('streamwish') || url.includes('/e/')) {
     let embedUrl = url;
     if (embedUrl.includes('/d/')) {
@@ -512,7 +478,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 3. Nhận diện và nhúng link Google Drive
+  // 3. Google Drive
   if (url.includes('drive.google.com')) {
     let embedUrl = url;
     const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
@@ -535,7 +501,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // 4. File MP4 trực tiếp thông thường
+  // 4. File MP4 trực tiếp
   playerBox.innerHTML = `
     <video 
       id="videoPlayer" 
@@ -617,6 +583,9 @@ if (closeModalBtn) {
     const modal = document.getElementById('playerModal');
     
     document.body.classList.remove('is-fullscreen-mode');
+
+    // Khôi phục lại thanh tiêu đề nếu bị ẩn
+    restoreHeaderBars();
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
@@ -944,44 +913,137 @@ if (userLoginForm) {
 }
 
 // ==========================================
-// 6. CÁC HÀM XỬ LÝ TOÀN MÀN HÌNH NỔI
+// 6. XỬ LÝ ẨN/HIỆN THANH CÔNG CỤ & FULLSCREEN TRIỆT ĐỂ
 // ==========================================
-window.toggleCustomFullscreen = function() {
-  const isFull = document.body.classList.toggle('is-fullscreen-mode');
-  const btn = document.getElementById('btnFullscreen');
-  const fsTitle = document.getElementById('fsMovieTitle');
-  const modalTitle = document.getElementById('modalMovieTitle');
+function hideHeaderBars() {
+  // Tìm bất kỳ thanh nào chứa nút "Về Trang Chủ" hoặc "Thu nhỏ" để ép ẩn trực tiếp
+  const modal = document.getElementById('playerModal');
+  if (!modal) return;
+  
+  const allElements = modal.querySelectorAll('div, header, nav');
+  allElements.forEach(el => {
+    if (el.classList.contains('player-box') || el.closest('.player-box')) return;
+    if (el.textContent.includes('Về Trang Chủ') || el.textContent.includes('Thu nhỏ') || el.id === 'fsTitleBar') {
+      el.dataset.oldDisplay = el.style.display || '';
+      el.style.setProperty('display', 'none', 'important');
+    }
+  });
+}
 
-  if (fsTitle && modalTitle) {
-    fsTitle.textContent = modalTitle.textContent;
+function restoreHeaderBars() {
+  const modal = document.getElementById('playerModal');
+  if (!modal) return;
+
+  const allElements = modal.querySelectorAll('div, header, nav');
+  allElements.forEach(el => {
+    if (el.dataset.oldDisplay !== undefined) {
+      el.style.display = el.dataset.oldDisplay;
+      delete el.dataset.oldDisplay;
+    }
+  });
+}
+
+const triggerPlayerFullscreen = async () => {
+  const playerBox = document.querySelector('.player-box');
+  const isNativeFullscreen = document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement;
+
+  // Nếu đang fullscreen -> Thoát
+  if (isNativeFullscreen || document.body.classList.contains('is-fullscreen-mode')) {
+    if (isNativeFullscreen) {
+      if (document.exitFullscreen) await document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    document.body.classList.remove('is-fullscreen-mode');
+    restoreHeaderBars();
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (e) {}
+    return;
   }
 
-  if (btn) {
-    if (isFull) {
-      btn.innerHTML = '✕ Thu nhỏ màn hình';
-      btn.style.background = '#4b5563';
-    } else {
-      btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
-      btn.style.background = '#e50914';
+  // Nếu chưa fullscreen -> Vào fullscreen
+  let nativeSuccess = false;
+  if (playerBox) {
+    try {
+      if (playerBox.requestFullscreen) {
+        await playerBox.requestFullscreen();
+        nativeSuccess = true;
+      } else if (playerBox.webkitRequestFullscreen) {
+        await playerBox.webkitRequestFullscreen();
+        nativeSuccess = true;
+      }
+    } catch (err) {
+      nativeSuccess = false;
     }
   }
+
+  // Bật class CSS Fullscreen & ép ẩn thanh công cụ
+  document.body.classList.add('is-fullscreen-mode');
+  hideHeaderBars();
+
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape').catch(() => {});
+    }
+  } catch (err) {}
+
+  window.scrollTo(0, 1);
+};
+
+window.toggleCustomFullscreen = function() {
+  triggerPlayerFullscreen();
 };
 
 window.exitToHomeDirectly = function() {
   document.body.classList.remove('is-fullscreen-mode');
-  const btn = document.getElementById('btnFullscreen');
-  if (btn) {
-    btn.innerHTML = '⛶ Phóng to / Thu nhỏ';
-    btn.style.background = '#e50914';
+  restoreHeaderBars();
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
   const closeBtn = document.getElementById('closeModal');
   if (closeBtn) closeBtn.click();
 };
 
+// Đồng bộ trạng thái khi xoay màn hình điện thoại
+window.addEventListener('orientationchange', () => {
+  if (window.orientation === 90 || window.orientation === -90) {
+    // Khi người dùng tự xoay ngang điện thoại
+    document.body.classList.add('is-fullscreen-mode');
+    hideHeaderBars();
+  } else {
+    // Khi xoay dọc lại
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      document.body.classList.remove('is-fullscreen-mode');
+      restoreHeaderBars();
+    }
+  }
+});
+
+const handleFullscreenChange = () => {
+  const isNativeFull = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!isNativeFull && !document.body.classList.contains('is-fullscreen-mode')) {
+    restoreHeaderBars();
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (e) {}
+  }
+};
+
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (document.body.classList.contains('is-fullscreen-mode')) {
-      window.toggleCustomFullscreen();
+      triggerPlayerFullscreen();
       return;
     }
     const modal = document.getElementById('playerModal');
