@@ -23,10 +23,10 @@ let isSwitchingEpisode = false;
 window.currentPlayingUrl = '';
 let art = null; // Biến lưu instance ArtPlayer
 
-// CHẶN NHẢY TAB QUẢNG CÁO TỪ BÊN NGOÀI
+// CHẶN GỌI WINDOW.OPEN TỪ PHÍA TRANG MẸ
 try {
   window.open = function () {
-    console.warn('Đã chặn mở tab mới ngoài ý muốn.');
+    console.warn('Đã chặn mở tab mới.');
     return null;
   };
 } catch (e) {}
@@ -223,10 +223,14 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // GỠ HOÀN TOÀN sandbox ĐỂ BYSE KHÔNG CHẶN 404
-    // Duy trì playsinline và webkit-playsinline để phát native trên di động
+    // TẠO TẤM KHIÊN CẢM ỨNG (SHIELD) PHỦ LÊN IFRAME TRÊN MOBILE
     container.innerHTML = `
-      <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
+      <div id="playerWrapper" style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%; min-height: 220px; background: #000; border-radius: 8px; overflow: hidden;">
+        <div id="mobileAdShield" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);">
+          <div style="background: #2563eb; color: #ffffff; padding: 10px 20px; border-radius: 24px; font-size: 0.95rem; font-weight: bold; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            ▶ Nhấn để bắt đầu xem
+          </div>
+        </div>
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
@@ -239,7 +243,21 @@ function setVideoSource(url) {
       </div>
     `;
 
-    // Khống chế việc mobile bị mất kiểm soát khi chạm vào iframe
+    // Khi người dùng bấm lần đầu, hấp thụ click để chặn mã pop-up mở tab rồi gỡ khiên
+    const shield = document.getElementById('mobileAdShield');
+    if (shield) {
+      const dismissShield = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        shield.style.display = 'none';
+      };
+      shield.addEventListener('touchstart', dismissShield, { passive: false });
+      shield.addEventListener('click', dismissShield);
+    }
+
+    // Giữ tiêu điểm trang web không bị đẩy sang ứng dụng khác
     const iframeEl = document.getElementById('playerIframe');
     if (iframeEl) {
       window.onblur = function () {
