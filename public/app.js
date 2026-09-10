@@ -211,26 +211,22 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // BẬT LỚP PHÒNG THỦ CHỐNG NHẢY TAB & QUẢNG CÁO TRÊN ĐIỆN THOẠI:
-    // - sandbox: Cho phép script và cùng nguồn gốc, TUYỆT ĐỐI KHÔNG cấp phép `allow-popups` và `allow-top-navigation`
-    // - playsinline & webkit-playsinline: Giữ khung hình phát gọn gàng trên mobile, không bị Safari bật ra ngoài
+    // Mã hóa các ký tự tiếng Việt có dấu trong URL để tránh lỗi 404/redirect
+    const safeUrl = encodeURI(embedUrl);
+
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 230px; overflow: hidden; background: #000;">
         <iframe 
           id="playerIframe"
-          src="${embedUrl}" 
+          src="${safeUrl}" 
           style="width: 100%; height: 100%; border: none; display: block;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
-          sandbox="allow-scripts allow-same-origin allow-forms"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
         </iframe>
       </div>
     `;
-
-    // Chặn bắt sự kiện window.open từ client nếu iframe cố gắng gọi ra ngoài web cha
-    window.onbeforeunload = null;
     return;
   }
 
