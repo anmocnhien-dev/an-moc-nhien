@@ -159,20 +159,29 @@ app.get('/api/genres', (req, res) => {
   });
 });
 
-// Danh sách phim
+// Danh sách phim (Đã tối ưu bộ lọc thể loại linh hoạt)
 app.get('/api/movies', (req, res) => {
-  const { search, genre, featured, limit = 20, offset = 0 } = req.query;
+  const { search, genre, featured, limit = 50, offset = 0 } = req.query;
   let conditions = [];
   let params = [];
 
   if (search) {
-    conditions.push('m.title LIKE ?');
-    params.push(`%${search.trim()}%`);
+    conditions.push('LOWER(m.title) LIKE ?');
+    params.push(`%${search.trim().toLowerCase()}%`);
   }
+
   if (genre) {
-    conditions.push('g.slug = ?');
-    params.push(genre.trim());
+    const cleanGenre = genre.trim().toLowerCase();
+    // Khớp cả slug gốc, slug thay dấu gạch, tên tiếng Việt, hoặc id
+    conditions.push(`(
+      LOWER(g.slug) = ? 
+      OR LOWER(REPLACE(g.slug, '_', '-')) = ? 
+      OR LOWER(g.name) = ?
+      OR CAST(m.genre_id AS TEXT) = ?
+    )`);
+    params.push(cleanGenre, cleanGenre, cleanGenre, cleanGenre);
   }
+
   if (featured !== undefined) {
     conditions.push('m.is_featured = ?');
     params.push(featured === 'true' || featured === '1' ? 1 : 0);
