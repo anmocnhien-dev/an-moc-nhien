@@ -249,7 +249,6 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID tránh lỗi router Byse
       const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
         embedUrl = match[1];
@@ -258,17 +257,18 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    const autoPlayUrl = embedUrl.includes('?') ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+    // Ghép cờ autoplay và autostart để khi nạp là phát được ngay
+    const separator = embedUrl.includes('?') ? '&' : '?';
+    const autoPlayUrl = `${embedUrl}${separator}autoplay=1&autostart=true`;
 
-    // Khởi tạo giao diện Play 1 chạm:
-    // Bỏ hoàn toàn sandbox để giải quyết triệt để lỗi 404 trên PC / Android
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
-        <div id="customPlayBtn" style="position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); cursor: pointer;">
-          <div style="width: 68px; height: 68px; background: #e50914; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(229,9,20,0.6);">
-            <svg viewBox="0 0 24 24" width="32" height="32" fill="#fff" style="margin-left: 4px;"><path d="M8 5v14l11-7z"/></svg>
+        <!-- Nút kích hoạt Play trực tiếp đè lên khung -->
+        <div id="customPlayBtn" style="position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.68); cursor: pointer;">
+          <div style="width: 72px; height: 72px; background: #e50914; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(229,9,20,0.7); pointer-events: none;">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="#fff" style="margin-left: 4px;"><path d="M8 5v14l11-7z"/></svg>
           </div>
-          <span style="color: #fff; margin-top: 10px; font-weight: 600; font-size: 0.95rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Bấm để xem phim</span>
+          <span style="color: #fff; margin-top: 12px; font-weight: 600; font-size: 1rem; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Bấm để xem phim</span>
         </div>
         
         <iframe 
@@ -285,7 +285,6 @@ function setVideoSource(url) {
       </div>
     `;
 
-    // Xử lý sự kiện: Bấm nút là nạp link và tự chạy, triệt tiêu hoàn toàn cú chạm mồi của quảng cáo Byse
     const playBtn = document.getElementById('customPlayBtn');
     const iframe = document.getElementById('playerIframe');
 
@@ -293,8 +292,22 @@ function setVideoSource(url) {
       playBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        // Nạp nguồn phim và ẩn nút Play
         iframe.src = iframe.dataset.src;
         playBtn.style.display = 'none';
+
+        // Khóa việc cướp tab trong lúc video bắt đầu tải
+        let lockTime = Date.now();
+        const cancelJump = () => {
+          if (Date.now() - lockTime < 3500) {
+            window.focus();
+          }
+        };
+        window.addEventListener('blur', cancelJump);
+        setTimeout(() => {
+          window.removeEventListener('blur', cancelJump);
+        }, 4000);
       });
     }
 
