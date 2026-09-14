@@ -60,6 +60,63 @@ app.get('/api/health', (req, res) => {
 });
 
 // ==========================================
+// 2.5. API BÓC TÁCH LUỒNG VIDEO BYSE / FILEMOON
+// ==========================================
+app.get('/api/extract-byse', async (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ status: 'error', message: 'Thiếu URL nguồn.' });
+  }
+
+  try {
+    let targetUrl = url.trim().replace('/d/', '/e/');
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer': targetUrl
+    };
+
+    const fetchRes = await fetch(targetUrl, { headers });
+    const html = await fetchRes.text();
+
+    // 1. Tìm trực tiếp file .m3u8 trong code nguồn
+    let m3u8Match = html.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/i);
+
+    // 2. Giải mã đóng gói packer eval(function(p,a,c,k,e,d)...) nếu Byse dùng obfuscation
+    if (!m3u8Match && html.includes('eval(function(p,a,c,k,e,d)')) {
+      const packedMatch = html.match(/eval\(function\(p,a,c,k,e,d\).+?\.split\('\|'\)\)\)/);
+      if (packedMatch) {
+        try {
+          const unpacked = eval(packedMatch[0].replace('eval(', '('));
+          m3u8Match = unpacked.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/i);
+        } catch (packErr) {
+          console.warn('Lỗi giải mã packer Byse:', packErr.message);
+        }
+      }
+    }
+
+    if (m3u8Match && m3u8Match[1]) {
+      return res.json({
+        status: 'success',
+        m3u8Url: m3u8Match[1],
+        referer: targetUrl
+      });
+    }
+
+    // Nếu Byse chặn cào từ xa, fallback về embed sạch
+    return res.json({
+      status: 'fallback',
+      originalUrl: targetUrl
+    });
+  } catch (err) {
+    console.error('Lỗi extract Byse:', err);
+    return res.json({
+      status: 'fallback',
+      originalUrl: url
+    });
+  }
+});
+
+// ==========================================
 // 3. AUTHENTICATION APIS
 // ==========================================
 
@@ -159,7 +216,7 @@ app.get('/api/genres', (req, res) => {
   });
 });
 
-// Danh sách phim (Đã tối ưu bộ lọc thể loại linh hoạt)
+// Danh sách phim
 app.get('/api/movies', (req, res) => {
   const { search, genre, featured, limit = 50, offset = 0 } = req.query;
   let conditions = [];
@@ -172,7 +229,6 @@ app.get('/api/movies', (req, res) => {
 
   if (genre) {
     const cleanGenre = genre.trim().toLowerCase();
-    // Khớp cả slug gốc, slug thay dấu gạch, tên tiếng Việt, hoặc id
     conditions.push(`(
       LOWER(g.slug) = ? 
       OR LOWER(REPLACE(g.slug, '_', '-')) = ? 
@@ -433,7 +489,7 @@ app.put('/api/admin/movies/:id', authenticateToken, requireAdmin, (req, res) => 
   );
 });
 
-// Xóa phim: Dọn sạch bảng comments, favorites, episodes trước để không dính Foreign Key Constraint
+// Xóa phim: Dọn sạch bảng comments, favorites, episodes trước
 app.delete('/api/admin/movies/:id', authenticateToken, requireAdmin, (req, res) => {
   const movieId = req.params.id;
 

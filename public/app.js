@@ -194,7 +194,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. NGUỒN PHÁT VIDEO & EMBED IFRAME
+// 2. KHỞI TẠO ARTPLAYER & BÓC TÁCH LUỒNG
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -214,77 +214,12 @@ function playNextEpisode() {
   }
 }
 
-function setVideoSource(url) {
-  window.currentPlayingUrl = url || '';
-  const container = document.getElementById('artPlayerContainer');
-  if (!container) return;
-
-  if (art && typeof art.destroy === 'function') {
-    art.destroy(false);
-    art = null;
-  }
-
-  container.innerHTML = '';
-
-  if (!url) return;
-
-  let cleanUrl = url.trim();
-
-  if (cleanUrl.includes('<iframe')) {
-    const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
-    if (srcMatch && srcMatch[1]) {
-      cleanUrl = srcMatch[1];
-    }
-  }
-
-  const isIframeProvider = 
-    cleanUrl.includes('byse') ||
-    cleanUrl.includes('filemoon') ||
-    cleanUrl.includes('drive.google.com') ||
-    cleanUrl.includes('dood') ||
-    cleanUrl.includes('ds2play') ||
-    cleanUrl.includes('/e/') || 
-    cleanUrl.includes('streamwish');
-
-  if (isIframeProvider) {
-    let embedUrl = cleanUrl;
-
-    if (cleanUrl.includes('drive.google.com')) {
-      const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
-      embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
-    } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
-      embedUrl = embedUrl.replace('/d/', '/e/');
-      const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
-      if (match && match[1]) {
-        embedUrl = match[1];
-      }
-    } else if (cleanUrl.includes('/d/')) {
-      embedUrl = cleanUrl.replace('/d/', '/e/');
-    }
-
-    // TUYỆT ĐỐI BỎ sandbox ĐỂ BYSE KHÔNG CHECK VÀ BỊ 404
-    container.innerHTML = `
-      <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
-        <iframe 
-          id="playerIframe"
-          src="${embedUrl}" 
-          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          referrerpolicy="no-referrer"
-          playsinline 
-          webkit-playsinline 
-          allowfullscreen>
-        </iframe>
-      </div>
-    `;
-
-    return;
-  }
-
-  // Khởi tạo ArtPlayer cho direct MP4 / M3U8
+// Khởi tạo ArtPlayer sạch với hỗ trợ Hls.js
+function initCleanArtPlayer(videoUrl, isHls) {
   art = new Artplayer({
     container: '#artPlayerContainer',
-    url: cleanUrl,
+    url: videoUrl,
+    type: isHls ? 'm3u8' : 'auto',
     autoplay: true,
     autoOrientation: true,
     fullscreen: true,
@@ -297,8 +232,27 @@ function setVideoSource(url) {
     playsinline: true,
     airplay: true,
     theme: '#e50914',
+    customType: {
+      m3u8: function (video, url, artInstance) {
+        if (window.Hls && Hls.isSupported()) {
+          if (artInstance.hls) artInstance.hls.destroy();
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          artInstance.hls = hls;
+          artInstance.on('destroy', () => hls.destroy());
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = url;
+        } else {
+          artInstance.notice.show = 'Trình duyệt không hỗ trợ chuẩn HLS m3u8.';
+        }
+      }
+    },
     icons: {
-      loading: '<div style="color: #e50914;">Đang tải...</div>',
+      loading: '<div style="color: #e50914; font-weight: bold;">Đang nạp phim...</div>',
     },
     controls: [
       {
@@ -323,6 +277,75 @@ function setVideoSource(url) {
   art.on('video:ended', () => {
     playNextEpisode();
   });
+}
+
+async function setVideoSource(url) {
+  window.currentPlayingUrl = url || '';
+  const container = document.getElementById('artPlayerContainer');
+  if (!container) return;
+
+  if (art && typeof art.destroy === 'function') {
+    art.destroy(false);
+    art = null;
+  }
+
+  container.innerHTML = '';
+  if (!url) return;
+
+  let cleanUrl = url.trim();
+
+  // Bóc tách link nếu người dùng dán cả thẻ iframe
+  if (cleanUrl.includes('<iframe')) {
+    const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
+    if (srcMatch && srcMatch[1]) {
+      cleanUrl = srcMatch[1];
+    }
+  }
+
+  // 1. Kiểm tra nguồn Byse / Filemoon: Gọi API bóc tách m3u8 sạch
+  const isByseHost = cleanUrl.includes('byse') || cleanUrl.includes('filemoon');
+  if (isByseHost) {
+    container.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #fff; background: #000;">
+        <div style="width: 40px; height: 40px; border: 3px solid #333; border-top: 3px solid #e50914; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <span style="margin-top: 14px; font-size: 0.95rem; font-weight: 500;">Đang kết nối luồng phát sạch (không quảng cáo)...</span>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+      </div>
+    `;
+
+    try {
+      const res = await fetch(`/api/extract-byse?url=${encodeURIComponent(cleanUrl)}`);
+      const data = await res.json();
+
+      if (data.status === 'success' && data.m3u8Url) {
+        container.innerHTML = '';
+        initCleanArtPlayer(data.m3u8Url, true);
+        return;
+      }
+    } catch (err) {
+      console.warn('Lỗi cào Byse, chuyển sang fallback:', err);
+    }
+  }
+
+  // 2. Nguồn Google Drive
+  if (cleanUrl.includes('drive.google.com')) {
+    const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
+    const driveEmbed = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
+    container.innerHTML = `
+      <iframe 
+        id="playerIframe"
+        src="${driveEmbed}" 
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    `;
+    return;
+  }
+
+  // 3. Nguồn trực tiếp MP4 hoặc M3U8 chuẩn
+  const isDirectHls = cleanUrl.includes('.m3u8');
+  initCleanArtPlayer(cleanUrl, isDirectHls);
 }
 
 async function openMovie(movieId) {
@@ -698,9 +721,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ==========================================
-// KHỞI CHẠY HỆ THỐNG
-// ==========================================
+// Khởi chạy ứng dụng
 window.addEventListener('DOMContentLoaded', () => {
   renderUserNav();
   loadGenres();
