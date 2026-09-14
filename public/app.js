@@ -22,6 +22,7 @@ let isSwitchingEpisode = false;
 
 window.currentPlayingUrl = '';
 let art = null;
+window.ytPlayerInstance = null;
 
 // =======================================================
 // LÁ CHẮN CHỐNG NHẢY TAB & POPUP
@@ -44,7 +45,6 @@ document.addEventListener('click', function (e) {
   }
 }, true);
 
-// Thu hồi tiêu điểm ngay lập tức nếu trình duyệt bị giật focus
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -54,13 +54,45 @@ window.addEventListener('blur', () => {
   }
 });
 
-// Ngăn chuyển trang chính
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
     window.stop();
   }
 });
+
+// ==========================================
+// ĐIỀU KHIỂN YOUTUBE QUA API NỘI BỘ
+// ==========================================
+window.toggleYTPlay = function () {
+  if (!window.ytPlayerInstance || typeof window.ytPlayerInstance.getPlayerState !== 'function') return;
+  const state = window.ytPlayerInstance.getPlayerState();
+  const playIcon = document.getElementById('ytCustomPlayIcon');
+  if (state === 1) { // Đang phát -> Tạm dừng
+    window.ytPlayerInstance.pauseVideo();
+    if (playIcon) playIcon.style.display = 'flex';
+  } else { // Đang dừng -> Phát tiếp
+    window.ytPlayerInstance.playVideo();
+    if (playIcon) playIcon.style.display = 'none';
+  }
+};
+
+window.seekYTRelative = function (seconds) {
+  if (!window.ytPlayerInstance || typeof window.ytPlayerInstance.getCurrentTime !== 'function') return;
+  const current = window.ytPlayerInstance.getCurrentTime();
+  window.ytPlayerInstance.seekTo(Math.max(0, current + seconds), true);
+};
+
+window.fullscreenYT = function () {
+  const wrapper = document.getElementById('mainPlayerBox');
+  if (!wrapper) return;
+  if (!document.fullscreenElement) {
+    if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+    else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
+};
 
 // ==========================================
 // 1. TẢI THỂ LOẠI & DANH SÁCH PHIM
@@ -184,7 +216,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. KHỞI TẠO PLAYER VÀ EMBED VIDEO
+// 2. KHỞI TẠO PLAYER VÀ EMBED NATIVE
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -277,13 +309,16 @@ function setVideoSource(url) {
     art.destroy(false);
     art = null;
   }
+  if (window.ytPlayerInstance && typeof window.ytPlayerInstance.destroy === 'function') {
+    try { window.ytPlayerInstance.destroy(); } catch (e) {}
+    window.ytPlayerInstance = null;
+  }
 
   container.innerHTML = '';
   if (!url) return;
 
   let cleanUrl = url.trim();
 
-  // Bóc tách URL nếu dán thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -292,12 +327,11 @@ function setVideoSource(url) {
   }
 
   // =======================================================
-  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (CÓ TẤM CHẮN CHỐNG BAY SANG APP)
+  // 1. YOUTUBE API: KHÓA CHẶT 100% CÁC LIÊN KẾT RA NGOÀI
   // =======================================================
   const isYouTube = cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
   if (isYouTube) {
     let videoId = '';
-
     if (cleanUrl.includes('youtu.be/')) {
       videoId = cleanUrl.split('youtu.be/')[1].split(/[?&]/)[0];
     } else if (cleanUrl.includes('watch?v=')) {
@@ -311,29 +345,67 @@ function setVideoSource(url) {
     if (videoId) {
       container.innerHTML = `
         <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
-          <!-- Iframe YouTube -->
-          <iframe 
-            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3" 
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
-            allowfullscreen>
-          </iframe>
+          <!-- Khung Player của YouTube API -->
+          <div id="ytPlayerTarget" style="width: 100%; height: 100%;"></div>
 
-          <!-- TẤM CHẮN 1: Chặn bấm vào Tiêu đề và Avatar Kênh ở trên cùng -->
-          <div style="position: absolute; top: 0; left: 0; width: 85%; height: 55px; z-index: 15; background: transparent;" 
-               onclick="event.stopPropagation(); event.preventDefault();"></div>
+          <!-- LỚP KÍNH TÀNG HÌNH: Che toàn màn hình chặn mọi cú chạm vào link YT -->
+          <div id="ytTouchShield" style="position: absolute; inset: 0; z-index: 20; background: transparent; cursor: pointer;"
+               onclick="window.toggleYTPlay()">
+            <!-- Icon Play nổi lên khi video tạm dừng -->
+            <div id="ytCustomPlayIcon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; background: rgba(0,0,0,0.7); border-radius: 50%; display: none; align-items: center; justify-content: center; border: 2px solid #fff; pointer-events: none;">
+              <div style="width: 0; height: 0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; border-left: 22px solid #fff; margin-left: 4px;"></div>
+            </div>
+          </div>
 
-          <!-- TẤM CHẮN 2: Chặn bấm vào nút 'Xem trên YouTube' ở góc dưới bên phải -->
-          <div style="position: absolute; bottom: 0; right: 0; width: 160px; height: 48px; z-index: 15; background: transparent;" 
-               onclick="event.stopPropagation(); event.preventDefault();"></div>
+          <!-- THANH ĐIỀU KHIỂN RIÊNG BIỆT (Không dính vào YT) -->
+          <div style="position: absolute; bottom: 8px; left: 12px; right: 12px; z-index: 25; display: flex; justify-content: space-between; align-items: center; pointer-events: auto;">
+            <div style="display: flex; gap: 8px;">
+              <button type="button" onclick="window.seekYTRelative(-10)" style="background: rgba(0,0,0,0.65); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">◀◀ 10s</button>
+              <button type="button" onclick="window.seekYTRelative(10)" style="background: rgba(0,0,0,0.65); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">10s ▶▶</button>
+            </div>
+            <button type="button" onclick="window.fullscreenYT()" style="background: rgba(0,0,0,0.65); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">⛶ Phóng To</button>
+          </div>
         </div>
       `;
+
+      const createPlayer = () => {
+        window.ytPlayerInstance = new YT.Player('ytPlayerTarget', {
+          videoId: videoId,
+          playerVars: {
+            autoplay: 1,
+            controls: 0,        // Tắt toàn bộ thanh điều khiển mặc định của YT
+            disablekb: 1,       // Chặn phím tắt
+            modestbranding: 1,  // Ẩn logo YT
+            rel: 0,             // Không hiện video liên quan
+            fs: 0,              // Tắt nút fullscreen gốc
+            playsinline: 1
+          },
+          events: {
+            'onStateChange': function (event) {
+              const playIcon = document.getElementById('ytCustomPlayIcon');
+              if (event.data === YT.PlayerState.PAUSED && playIcon) {
+                playIcon.style.display = 'flex';
+              } else if (event.data === YT.PlayerState.PLAYING && playIcon) {
+                playIcon.style.display = 'none';
+              } else if (event.data === YT.PlayerState.ENDED) {
+                playNextEpisode();
+              }
+            }
+          }
+        });
+      };
+
+      if (window.YT && window.YT.Player) {
+        createPlayer();
+      } else {
+        window.onYouTubeIframeAPIReady = createPlayer;
+      }
       return;
     }
   }
 
   // =======================================================
-  // 2. CÁC NGUỒN HOST DỰ PHÒNG KHÁC (Drive, Byse...)
+  // 2. CÁC NGUỒN HOST KHÁC (Drive, Byse...)
   // =======================================================
   const isIframeProvider = 
     cleanUrl.includes('byse') ||
@@ -346,16 +418,9 @@ function setVideoSource(url) {
 
   if (isIframeProvider) {
     let embedUrl = cleanUrl;
-
     if (cleanUrl.includes('drive.google.com')) {
       const fileIdMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/id=([a-zA-Z0-9_-]+)/);
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
-    } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
-      embedUrl = embedUrl.replace('/d/', '/e/');
-      const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
-      if (match && match[1]) {
-        embedUrl = match[1];
-      }
     } else if (cleanUrl.includes('/d/')) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
@@ -366,8 +431,7 @@ function setVideoSource(url) {
           id="playerIframe"
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          referrerpolicy="no-referrer"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
           playsinline 
           webkit-playsinline 
           allowfullscreen>
@@ -378,7 +442,7 @@ function setVideoSource(url) {
   }
 
   // =======================================================
-  // 3. LINK TRỰC TIẾP MP4 / M3U8 -> PHÁT QUA ARTPLAYER
+  // 3. LINK TRỰC TIẾP MP4 / M3U8 -> QUA ARTPLAYER
   // =======================================================
   const isHls = cleanUrl.includes('.m3u8');
   initCleanArtPlayer(cleanUrl, isHls);
@@ -443,6 +507,10 @@ if (closeModalBtn) {
     if (art && typeof art.destroy === 'function') {
       art.destroy(false);
       art = null;
+    }
+    if (window.ytPlayerInstance && typeof window.ytPlayerInstance.destroy === 'function') {
+      try { window.ytPlayerInstance.destroy(); } catch (e) {}
+      window.ytPlayerInstance = null;
     }
 
     setVideoSource('');
