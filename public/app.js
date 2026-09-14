@@ -184,7 +184,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. KHỞI TẠO PLAYER VÀ EMBED NATIVE
+// 2. KHỞI TẠO PLAYER VÀ EMBED VIDEO
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -283,6 +283,7 @@ function setVideoSource(url) {
 
   let cleanUrl = url.trim();
 
+  // Bóc tách URL nếu dán thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -290,6 +291,41 @@ function setVideoSource(url) {
     }
   }
 
+  // =======================================================
+  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (CHỐNG POPUP, XOAY NGANG)
+  // =======================================================
+  const isYouTube = cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
+  if (isYouTube) {
+    let videoId = '';
+
+    if (cleanUrl.includes('youtu.be/')) {
+      videoId = cleanUrl.split('youtu.be/')[1].split(/[?&]/)[0];
+    } else if (cleanUrl.includes('watch?v=')) {
+      videoId = cleanUrl.split('watch?v=')[1].split('&')[0];
+    } else if (cleanUrl.includes('/embed/')) {
+      videoId = cleanUrl.split('/embed/')[1].split('?')[0];
+    } else if (cleanUrl.includes('/shorts/')) {
+      videoId = cleanUrl.split('/shorts/')[1].split('?')[0];
+    }
+
+    if (videoId) {
+      container.innerHTML = `
+        <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
+          <iframe 
+            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1" 
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
+            allowfullscreen>
+          </iframe>
+        </div>
+      `;
+      return;
+    }
+  }
+
+  // =======================================================
+  // 2. CÁC NGUỒN HOST DỰ PHÒNG KHÁC (Drive, Byse...)
+  // =======================================================
   const isIframeProvider = 
     cleanUrl.includes('byse') ||
     cleanUrl.includes('filemoon') ||
@@ -315,7 +351,6 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Nhúng trực tiếp iframe không sandbox (hết 404, hết lỗi Video Load Failed)
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
         <iframe 
@@ -333,7 +368,9 @@ function setVideoSource(url) {
     return;
   }
 
-  // Khởi tạo ArtPlayer đối với link trực tiếp (.mp4 / .m3u8)
+  // =======================================================
+  // 3. LINK TRỰC TIẾP MP4 / M3U8 -> PHÁT QUA ARTPLAYER
+  // =======================================================
   const isHls = cleanUrl.includes('.m3u8');
   initCleanArtPlayer(cleanUrl, isHls);
 }
