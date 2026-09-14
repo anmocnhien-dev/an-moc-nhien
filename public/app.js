@@ -28,7 +28,7 @@ let art = null;
 // =======================================================
 try {
   window.open = function () {
-    console.warn('Đã chặn mở tab mới.');
+    console.warn('Đã chặn lệnh mở tab mới.');
     return null;
   };
 } catch (e) {}
@@ -251,15 +251,18 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Tự phát CÓ TIẾNG (không có muted)
+    // 1. autoplay=1&muted=1: Video chạy tự động và TẮT TIẾNG BAN ĐẦU để không ồn bất ngờ
+    // 2. Không dùng sandbox để tránh lỗi 404 trên Chromium
     const separator = embedUrl.includes('?') ? '&' : '?';
-    const autoPlayWithSoundUrl = `${embedUrl}${separator}autoplay=1&autostart=true`;
+    const embedFinalUrl = `${embedUrl}${separator}autoplay=1&muted=1`;
 
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
+        <!-- Lớp kính nuốt trọn cú chạm đầu tiên kích hoạt quảng cáo ngầm -->
+        <div id="tapNeutralizer" style="position: absolute; inset: 0; z-index: 5; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent;"></div>
         <iframe 
           id="playerIframe"
-          src="${autoPlayWithSoundUrl}" 
+          src="${embedFinalUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
           allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *" 
           referrerpolicy="no-referrer"
@@ -269,6 +272,19 @@ function setVideoSource(url) {
         </iframe>
       </div>
     `;
+
+    // Cú chạm/click đầu tiên chạm vào màng lọc này sẽ bị triệt tiêu, không chạm được vào bẫy mở tab của Byse
+    const neutralizer = document.getElementById('tapNeutralizer');
+    if (neutralizer) {
+      const handleFirstInteraction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        neutralizer.remove(); // Gỡ bỏ màng lọc ngay sau cú chạm đầu
+        console.log('Đã vô hiệu hóa bẫy mở tab của Byse.');
+      };
+      neutralizer.addEventListener('click', handleFirstInteraction, { passive: false });
+      neutralizer.addEventListener('touchend', handleFirstInteraction, { passive: false });
+    }
 
     return;
   }
