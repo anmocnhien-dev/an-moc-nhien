@@ -24,15 +24,24 @@ window.currentPlayingUrl = '';
 let art = null;
 
 // =======================================================
-// LÁ CHẮN CHỐNG NHẢY TAB CẤP ĐỘ CỬA SỔ
+// LÁ CHẮN CHỐNG NHẢY TAB & POPUP
 // =======================================================
+
+// 1. Chặn toàn bộ lệnh mở cửa sổ mới từ Javascript
 try {
   window.open = function () {
-    console.warn('Đã chặn lệnh window.open mở tab mới.');
-    return null;
+    console.warn('Đã triệt tiêu lệnh window.open mở tab.');
+    return {
+      closed: true,
+      focus: function () {},
+      blur: function () {},
+      close: function () {},
+      location: { href: 'about:blank' }
+    };
   };
 } catch (e) {}
 
+// 2. Chặn các thẻ link target="_blank"
 document.addEventListener('click', function (e) {
   const targetLink = e.target && e.target.closest ? e.target.closest('a') : null;
   if (targetLink && targetLink.getAttribute('target') === '_blank') {
@@ -40,12 +49,12 @@ document.addEventListener('click', function (e) {
     if (!href.startsWith('/') && !href.includes(window.location.hostname)) {
       e.preventDefault();
       e.stopPropagation();
-      console.warn('Đã triệt tiêu link nhảy tab ngoại vi:', href);
+      console.warn('Đã chặn link mở tab ngoại vi:', href);
     }
   }
 }, true);
 
-// Thu hồi tiêu điểm ngay khi phát hiện cửa sổ bị giật focus
+// 3. Cơ chế giật lại tiêu điểm tức thì khi phát hiện trình duyệt mất focus
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -55,6 +64,7 @@ window.addEventListener('blur', () => {
   }
 });
 
+// 4. Ngăn chặn chuyển trang chính
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -252,9 +262,7 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Giữ URL gốc chuẩn (không thêm query autoplay/muted gây lỗi router)
-    // Cấp quyền scripts, same-origin và storage-access để không 404
-    // TUYỆT ĐỐI KHÔNG CẤP allow-popups để chặn 100% việc nhảy tab
+    // TUYỆT ĐỐI BỎ sandbox ĐỂ BYSE KHÔNG CHECK VÀ BỊ 404
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
         <iframe 
@@ -262,7 +270,6 @@ function setVideoSource(url) {
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-storage-access-by-user-activation"
           referrerpolicy="no-referrer"
           playsinline 
           webkit-playsinline 
@@ -274,7 +281,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // Khởi tạo ArtPlayer cho link direct MP4 / M3U8
+  // Khởi tạo ArtPlayer cho direct MP4 / M3U8
   art = new Artplayer({
     container: '#artPlayerContainer',
     url: cleanUrl,
