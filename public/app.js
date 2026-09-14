@@ -30,7 +30,7 @@ let art = null;
 // 1. Chặn toàn bộ lệnh window.open ngầm
 try {
   window.open = function () {
-    console.warn('Đã ngăn chặn lệnh mở tab mới từ mã nhúng.');
+    console.warn('Đã ngăn chặn lệnh mở tab mới.');
     return null;
   };
 } catch (e) {}
@@ -48,7 +48,7 @@ document.addEventListener('click', function (e) {
   }
 }, true);
 
-// 3. Cơ chế Focus Trap: Ngăn iframe cướp quyền điều khiển hoặc kích hoạt popup khi click
+// 3. Cơ chế Focus Trap: Ngăn iframe kích hoạt popup khi click
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -258,8 +258,10 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // BỎ sandbox trên thẻ iframe để giải quyết triệt để lỗi 404 trên Chromium & Android
-    // Áp dụng chính sách bảo vệ referrer và quản lý mở tab qua lớp JavaScript bao ngoài
+    // CHỐNG NHẢY TAB TRIỆT ĐỂ:
+    // 1. sandbox: Cấp allow-scripts allow-same-origin allow-forms allow-presentation để player chạy
+    // 2. KHÔNG CẤP allow-popups & KHÔNG CẤP allow-popups-to-escape-sandbox -> Chặn đứng mở tab
+    // 3. csp: Khóa quyền mở cửa sổ cấp độ chính sách trình duyệt
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
         <iframe 
@@ -267,6 +269,8 @@ function setVideoSource(url) {
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+          csp="sandbox allow-scripts allow-same-origin allow-forms allow-presentation;"
           referrerpolicy="no-referrer"
           playsinline 
           webkit-playsinline 
