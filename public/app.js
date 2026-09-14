@@ -24,10 +24,10 @@ window.currentPlayingUrl = '';
 let art = null;
 
 // =======================================================
-// LÁ CHẮN CHỐNG NHẢY TAB & POPUP (PC, ANDROID, IOS)
+// LÁ CHẮN CHỐNG NHẢY TAB & POPUP NGOẠI VI
 // =======================================================
 
-// 1. Chặn toàn bộ lệnh window.open từ bất kỳ script nào
+// 1. Chặn toàn bộ lệnh window.open ngầm
 try {
   window.open = function () {
     console.warn('Đã ngăn chặn lệnh mở tab mới từ script nhúng.');
@@ -48,8 +48,7 @@ document.addEventListener('click', function (e) {
   }
 }, true);
 
-// 3. Cơ chế Khóa Tiêu Điểm (Focus Lockdown): 
-// Khi click vào iframe của Byse, nếu trình duyệt phát hiện mất focus để mở popup, lập tức thu hồi lại
+// 3. Cơ chế giật lại tiêu điểm (Focus Trap)
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -250,7 +249,7 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID để Byse nhận diện chính xác router
+      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID tránh lỗi router Byse
       const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
         embedUrl = match[1];
@@ -259,14 +258,24 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // BỎ HOÀN TOÀN sandbox ĐỂ BYSE KHÔNG BỊ 404 TRÊN CỐC CỐC / CHROME / ANDROID
-    // Việc chống nhảy tab được đảm nhiệm bởi Window Focus Trap và Interceptor bên trên
+    const autoPlayUrl = embedUrl.includes('?') ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+
+    // Khởi tạo giao diện Play 1 chạm:
+    // Bỏ hoàn toàn sandbox để giải quyết triệt để lỗi 404 trên PC / Android
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
+        <div id="customPlayBtn" style="position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.65); cursor: pointer;">
+          <div style="width: 68px; height: 68px; background: #e50914; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(229,9,20,0.6);">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="#fff" style="margin-left: 4px;"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <span style="color: #fff; margin-top: 10px; font-weight: 600; font-size: 0.95rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Bấm để xem phim</span>
+        </div>
+        
         <iframe 
           id="playerIframe"
-          src="${embedUrl}" 
-          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+          src="" 
+          data-src="${autoPlayUrl}"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
           referrerpolicy="no-referrer"
           playsinline 
@@ -275,6 +284,19 @@ function setVideoSource(url) {
         </iframe>
       </div>
     `;
+
+    // Xử lý sự kiện: Bấm nút là nạp link và tự chạy, triệt tiêu hoàn toàn cú chạm mồi của quảng cáo Byse
+    const playBtn = document.getElementById('customPlayBtn');
+    const iframe = document.getElementById('playerIframe');
+
+    if (playBtn && iframe) {
+      playBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        iframe.src = iframe.dataset.src;
+        playBtn.style.display = 'none';
+      });
+    }
 
     return;
   }
