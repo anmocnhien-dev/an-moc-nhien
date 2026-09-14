@@ -24,18 +24,18 @@ window.currentPlayingUrl = '';
 let art = null;
 
 // =======================================================
-// HỆ THỐNG PHÒNG THỦ CHỐNG NHẢY TAB & POPUP (PC, ANDROID, IOS)
+// LÁ CHẮN CHỐNG NHẢY TAB & POPUP (PC, ANDROID, IOS)
 // =======================================================
 
-// 1. Chặn toàn bộ lệnh window.open ngầm từ trang mẹ
+// 1. Chặn toàn bộ lệnh window.open từ bất kỳ script nào
 try {
   window.open = function () {
-    console.warn('Đã ngăn chặn lệnh mở tab mới.');
+    console.warn('Đã ngăn chặn lệnh mở tab mới từ script nhúng.');
     return null;
   };
 } catch (e) {}
 
-// 2. Chặn các liên kết target="_blank" ngoại vi
+// 2. Chặn các liên kết target="_blank" tự động mở tab ngoại vi
 document.addEventListener('click', function (e) {
   const targetLink = e.target && e.target.closest ? e.target.closest('a') : null;
   if (targetLink && targetLink.getAttribute('target') === '_blank') {
@@ -43,12 +43,13 @@ document.addEventListener('click', function (e) {
     if (!href.startsWith('/') && !href.includes(window.location.hostname)) {
       e.preventDefault();
       e.stopPropagation();
-      console.warn('Đã triệt tiêu liên kết mở tab ngoài:', href);
+      console.warn('Đã triệt tiêu link nhảy tab ngoại vi:', href);
     }
   }
 }, true);
 
-// 3. Cơ chế Focus Trap: Thu hồi tiêu điểm ngay khi iframe cố gắng kích hoạt cửa sổ mới
+// 3. Cơ chế Khóa Tiêu Điểm (Focus Lockdown): 
+// Khi click vào iframe của Byse, nếu trình duyệt phát hiện mất focus để mở popup, lập tức thu hồi lại
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -58,7 +59,7 @@ window.addEventListener('blur', () => {
   }
 });
 
-// 4. Ngăn chặn chuyển hướng URL trang chính
+// 4. Khóa cướp URL trang chính khi đang phát phim
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -249,7 +250,7 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID, loại bỏ phần slug tiếng Việt tránh 404
+      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID để Byse nhận diện chính xác router
       const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
         embedUrl = match[1];
@@ -258,18 +259,16 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // CẤU HÌNH SANDBOX CHUẨN XÁC:
-    // 1. allow-storage-access-by-user-activation: Cho phép Byse truy cập session/cookie khi người dùng tương tác -> KHÔNG CÒN 404 TRÊN CHROMIUM/ANDROID
-    // 2. allow-scripts allow-same-origin allow-forms allow-presentation: Cho phép player chạy đầy đủ tính năng
-    // 3. TUYỆT ĐỐI KHÔNG CÓ allow-popups & allow-popups-to-escape-sandbox -> KHÓA CỨNG 100% KHÔNG THỂ NHẢY TAB
+    // BỎ HOÀN TOÀN sandbox ĐỂ BYSE KHÔNG BỊ 404 TRÊN CỐC CỐC / CHROME / ANDROID
+    // Việc chống nhảy tab được đảm nhiệm bởi Window Focus Trap và Interceptor bên trên
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope; storage-access" 
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-storage-access-by-user-activation"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
+          referrerpolicy="no-referrer"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
