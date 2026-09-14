@@ -249,7 +249,7 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID, loại bỏ phần slug tiếng Việt
+      // Cắt gọn URL chỉ giữ lại domain + /e/ + ID, loại bỏ phần slug tiếng Việt tránh 404
       const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
         embedUrl = match[1];
@@ -258,19 +258,16 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // CHỐNG NHẢY TAB TRIỆT ĐỂ:
-    // 1. sandbox: Cấp allow-scripts allow-same-origin allow-forms allow-presentation để player chạy
-    // 2. KHÔNG CẤP allow-popups & KHÔNG CẤP allow-popups-to-escape-sandbox -> Chặn đứng mở tab
-    // 3. csp: Khóa quyền mở cửa sổ cấp độ chính sách trình duyệt
+    // BỎ HOÀN TOÀN sandbox VÀ csp ĐỂ TRIỆT TIÊU LỖI 404 TRÊN CHROMIUM & ANDROID
+    // DÙNG LỚP KÍNH TÀNG HÌNH adShield ĐỂ HẤP THỤ CÚ CLICK MỞ TAB QUẢNG CÁO
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
+        <div id="adShield" style="position: absolute; inset: 0; z-index: 5; background: transparent; cursor: pointer;"></div>
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
-          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-          csp="sandbox allow-scripts allow-same-origin allow-forms allow-presentation;"
           referrerpolicy="no-referrer"
           playsinline 
           webkit-playsinline 
@@ -278,6 +275,17 @@ function setVideoSource(url) {
         </iframe>
       </div>
     `;
+
+    // Khi người dùng bấm lần đầu, lớp khiên chặn đứng lệnh kích hoạt tab quảng cáo rồi tự ẩn đi
+    const shield = document.getElementById('adShield');
+    if (shield) {
+      shield.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        shield.style.display = 'none';
+        console.log('Đã chặn cú click kích hoạt quảng cáo ngầm.');
+      });
+    }
 
     return;
   }
