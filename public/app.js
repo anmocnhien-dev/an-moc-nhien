@@ -21,17 +21,33 @@ let currentEpisodeIndex = 0;
 let isSwitchingEpisode = false;
 
 window.currentPlayingUrl = '';
-let art = null; // Biến lưu instance ArtPlayer
+let art = null;
 
-// CHẶN GỌI WINDOW.OPEN TỪ PHÍA TRANG MẸ
+// =======================================================
+// LÁ CHẮN CHỐNG NHẢY TAB & CHỐNG CƯỚP TRANG (PC, ANDROID, IOS)
+// =======================================================
+// 1. Chặn lệnh gọi window.open từ script ngoài
 try {
   window.open = function () {
-    console.warn('Đã chặn mở tab mới.');
+    console.warn('Đã chặn lệnh mở tab mới từ script ngầm.');
     return null;
   };
 } catch (e) {}
 
-// Ngăn chuyển hướng ngoài ý muốn khi player đang mở
+// 2. Chặn các liên kết cố tình mở tab mới target="_blank" trên iOS/WebKit
+document.addEventListener('click', function (e) {
+  const targetLink = e.target && e.target.closest ? e.target.closest('a') : null;
+  if (targetLink && targetLink.getAttribute('target') === '_blank') {
+    const href = targetLink.getAttribute('href') || '';
+    if (!href.startsWith('/') && !href.includes(window.location.hostname)) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.warn('Đã triệt tiêu link nhảy tab ngoại vi:', href);
+    }
+  }
+}, true);
+
+// 3. Ngăn chặn chuyển hướng URL trang chính khi người dùng đang xem phim
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -161,7 +177,7 @@ async function loadMovies(searchTerm = '') {
 }
 
 // ==========================================
-// 2. KHỞI TẠO ARTPLAYER & NGUỒN PHÁT TỰ ĐỘNG
+// 2. KHỞI TẠO NGUỒN PHÁT TỰ ĐỘNG
 // ==========================================
 function playNextEpisode() {
   if (isSwitchingEpisode) return;
@@ -197,7 +213,7 @@ function setVideoSource(url) {
 
   let cleanUrl = url.trim();
 
-  // Bóc tách link src nếu người dùng dán thẻ iframe
+  // Bóc tách link src nếu người dùng dán cả thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -222,7 +238,7 @@ function setVideoSource(url) {
       embedUrl = fileIdMatch ? `https://drive.google.com/file/d/${fileIdMatch[1]}/preview` : cleanUrl;
     } else if (cleanUrl.includes('byse') || cleanUrl.includes('filemoon')) {
       embedUrl = embedUrl.replace('/d/', '/e/');
-      // Cắt gọn URL chỉ giữ domain + /e/ + ID (loại bỏ tiếng Việt có dấu tránh 404)
+      // Cắt gọn URL chỉ giữ domain + /e/ + ID (loại bỏ tiếng Việt để tránh 404)
       const match = embedUrl.match(/(https?:\/\/[^\/]+\/e\/[a-zA-Z0-9_-]+)/i);
       if (match && match[1]) {
         embedUrl = match[1];
@@ -231,11 +247,12 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // KHÓA MỞ TAB & CƯỚP TRANG TRÊN DI ĐỘNG BẰNG SANDBOX ĐÚNG CHUẨN
-    // Không có allow-popups: Chặn hoàn toàn lệnh mở tab mới
-    // Không có allow-top-navigation: Ngăn cướp URL trang mẹ
+    // CHẶN BẬT TAB MỚI TRÊN MỌI THIẾT BỊ (PC, ANDROID, IOS):
+    // - allow-scripts allow-same-origin allow-forms allow-presentation: Player chạy được, tránh 404
+    // - KHÔNG CÓ allow-popups & KHÔNG CÓ allow-popups-to-escape-sandbox: Triệt tiêu mọi popup
+    // - KHÔNG CÓ allow-top-navigation: Ngăn cướp hướng trang web chính
     container.innerHTML = `
-      <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden;">
+      <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
@@ -261,7 +278,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // Khởi tạo ArtPlayer cho MP4 / M3U8
+  // Khởi tạo ArtPlayer cho định dạng MP4 / M3U8 trực tiếp
   art = new Artplayer({
     container: '#artPlayerContainer',
     url: cleanUrl,
