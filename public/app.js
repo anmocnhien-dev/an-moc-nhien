@@ -27,7 +27,7 @@ let art = null;
 // HỆ THỐNG PHÒNG THỦ CHỐNG NHẢY TAB & POPUP (PC, ANDROID, IOS)
 // =======================================================
 
-// 1. Chặn toàn bộ lệnh window.open ngầm
+// 1. Chặn toàn bộ lệnh window.open ngầm từ trang mẹ
 try {
   window.open = function () {
     console.warn('Đã ngăn chặn lệnh mở tab mới.');
@@ -48,7 +48,7 @@ document.addEventListener('click', function (e) {
   }
 }, true);
 
-// 3. Cơ chế Focus Trap: Ngăn iframe kích hoạt popup khi click
+// 3. Cơ chế Focus Trap: Thu hồi tiêu điểm ngay khi iframe cố gắng kích hoạt cửa sổ mới
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -258,34 +258,24 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // BỎ HOÀN TOÀN sandbox VÀ csp ĐỂ TRIỆT TIÊU LỖI 404 TRÊN CHROMIUM & ANDROID
-    // DÙNG LỚP KÍNH TÀNG HÌNH adShield ĐỂ HẤP THỤ CÚ CLICK MỞ TAB QUẢNG CÁO
+    // CẤU HÌNH SANDBOX CHUẨN XÁC:
+    // 1. allow-storage-access-by-user-activation: Cho phép Byse truy cập session/cookie khi người dùng tương tác -> KHÔNG CÒN 404 TRÊN CHROMIUM/ANDROID
+    // 2. allow-scripts allow-same-origin allow-forms allow-presentation: Cho phép player chạy đầy đủ tính năng
+    // 3. TUYỆT ĐỐI KHÔNG CÓ allow-popups & allow-popups-to-escape-sandbox -> KHÓA CỨNG 100% KHÔNG THỂ NHẢY TAB
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
-        <div id="adShield" style="position: absolute; inset: 0; z-index: 5; background: transparent; cursor: pointer;"></div>
         <iframe 
           id="playerIframe"
           src="${embedUrl}" 
-          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
-          referrerpolicy="no-referrer"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope; storage-access" 
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-storage-access-by-user-activation"
           playsinline 
           webkit-playsinline 
           allowfullscreen>
         </iframe>
       </div>
     `;
-
-    // Khi người dùng bấm lần đầu, lớp khiên chặn đứng lệnh kích hoạt tab quảng cáo rồi tự ẩn đi
-    const shield = document.getElementById('adShield');
-    if (shield) {
-      shield.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        shield.style.display = 'none';
-        console.log('Đã chặn cú click kích hoạt quảng cáo ngầm.');
-      });
-    }
 
     return;
   }
