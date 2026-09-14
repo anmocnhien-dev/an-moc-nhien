@@ -24,18 +24,18 @@ window.currentPlayingUrl = '';
 let art = null;
 
 // =======================================================
-// LÁ CHẮN CHỐNG NHẢY TAB & POPUP NGOẠI VI
+// HỆ THỐNG TRIỆT TIÊU POPUP & NHẢY TAB (PC, ANDROID, IOS)
 // =======================================================
 
-// 1. Chặn toàn bộ lệnh window.open ngầm
+// 1. Chặn window.open ngầm
 try {
   window.open = function () {
-    console.warn('Đã ngăn chặn lệnh mở tab mới từ script nhúng.');
+    console.warn('Đã triệt tiêu lệnh window.open');
     return null;
   };
 } catch (e) {}
 
-// 2. Chặn các liên kết target="_blank" tự động mở tab ngoại vi
+// 2. Chặn các liên kết target="_blank"
 document.addEventListener('click', function (e) {
   const targetLink = e.target && e.target.closest ? e.target.closest('a') : null;
   if (targetLink && targetLink.getAttribute('target') === '_blank') {
@@ -43,12 +43,11 @@ document.addEventListener('click', function (e) {
     if (!href.startsWith('/') && !href.includes(window.location.hostname)) {
       e.preventDefault();
       e.stopPropagation();
-      console.warn('Đã triệt tiêu link nhảy tab ngoại vi:', href);
     }
   }
 }, true);
 
-// 3. Cơ chế giật lại tiêu điểm (Focus Trap)
+// 3. Khóa giật tiêu điểm tức thì khi Iframe cố mở cửa sổ mới
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -58,7 +57,7 @@ window.addEventListener('blur', () => {
   }
 });
 
-// 4. Khóa cướp URL trang chính khi đang phát phim
+// 4. Ngăn chặn chuyển trang chính
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -224,7 +223,6 @@ function setVideoSource(url) {
 
   let cleanUrl = url.trim();
 
-  // Bóc tách URL nếu người dùng dán cả thẻ iframe
   if (cleanUrl.includes('<iframe')) {
     const srcMatch = cleanUrl.match(/src=["'](.*?)["']/);
     if (srcMatch && srcMatch[1]) {
@@ -257,24 +255,13 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Ghép cờ autoplay và autostart để khi nạp là phát được ngay
-    const separator = embedUrl.includes('?') ? '&' : '?';
-    const autoPlayUrl = `${embedUrl}${separator}autoplay=1&autostart=true`;
-
+    // Nạp iframe trực tiếp kèm link thực để máy chủ Byse cấp session (HẾT 404)
+    // Dùng pointer-events: auto trực tiếp nhưng khóa hoàn toàn hành vi window.open & blur trap
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
-        <!-- Nút kích hoạt Play trực tiếp đè lên khung -->
-        <div id="customPlayBtn" style="position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.68); cursor: pointer;">
-          <div style="width: 72px; height: 72px; background: #e50914; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(229,9,20,0.7); pointer-events: none;">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="#fff" style="margin-left: 4px;"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-          <span style="color: #fff; margin-top: 12px; font-weight: 600; font-size: 1rem; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Bấm để xem phim</span>
-        </div>
-        
         <iframe 
           id="playerIframe"
-          src="" 
-          data-src="${autoPlayUrl}"
+          src="${embedUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
           referrerpolicy="no-referrer"
@@ -284,32 +271,6 @@ function setVideoSource(url) {
         </iframe>
       </div>
     `;
-
-    const playBtn = document.getElementById('customPlayBtn');
-    const iframe = document.getElementById('playerIframe');
-
-    if (playBtn && iframe) {
-      playBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Nạp nguồn phim và ẩn nút Play
-        iframe.src = iframe.dataset.src;
-        playBtn.style.display = 'none';
-
-        // Khóa việc cướp tab trong lúc video bắt đầu tải
-        let lockTime = Date.now();
-        const cancelJump = () => {
-          if (Date.now() - lockTime < 3500) {
-            window.focus();
-          }
-        };
-        window.addEventListener('blur', cancelJump);
-        setTimeout(() => {
-          window.removeEventListener('blur', cancelJump);
-        }, 4000);
-      });
-    }
 
     return;
   }
