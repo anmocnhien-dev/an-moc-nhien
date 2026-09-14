@@ -289,7 +289,7 @@ function setVideoSource(url) {
   }
 
   // =======================================================
-  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (HẾT ĐEN MÀN HÌNH + CHẶN MỞ APP)
+  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (CHẶN COPY LINK + CHẶN LOGO + CHẶN TIÊU ĐỀ)
   // =======================================================
   const isYouTube = cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
   if (isYouTube) {
@@ -307,15 +307,31 @@ function setVideoSource(url) {
     if (videoId) {
       container.innerHTML = `
         <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
+          <!-- Iframe YouTube: Đã bỏ clipboard-write để chặn lưu link vào bộ nhớ tạm -->
           <iframe 
-            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1" 
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1&cc_load_policy=0&iv_load_policy=3" 
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
             sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
             playsinline 
             webkit-playsinline 
             allowfullscreen>
           </iframe>
+
+          <!-- TẤM CHẮN 1: Khóa 100% Tiêu đề & Avatar Kênh ở góc trên -->
+          <div style="position: absolute; top: 0; left: 0; width: 75%; height: 60px; z-index: 20; background: transparent; cursor: default;" 
+               onclick="event.stopPropagation(); event.preventDefault();"
+               onmousedown="event.stopPropagation(); event.preventDefault();"></div>
+
+          <!-- TẤM CHẮN 2: Khóa 100% Nút Sao Chép Liên Kết (biểu tượng móc xích) ở góc dưới bên trái -->
+          <div style="position: absolute; bottom: 0; left: 0; width: 65px; height: 50px; z-index: 20; background: transparent; cursor: default;" 
+               onclick="event.stopPropagation(); event.preventDefault();"
+               onmousedown="event.stopPropagation(); event.preventDefault();"></div>
+
+          <!-- TẤM CHẮN 3: Khóa 100% Logo YouTube ở góc dưới bên phải (chừa nút phóng to ngoài cùng) -->
+          <div style="position: absolute; bottom: 0; right: 48px; width: 110px; height: 45px; z-index: 20; background: transparent; cursor: default;" 
+               onclick="event.stopPropagation(); event.preventDefault();"
+               onmousedown="event.stopPropagation(); event.preventDefault();"></div>
         </div>
       `;
       return;
@@ -361,7 +377,7 @@ function setVideoSource(url) {
 
   // =======================================================
   // 3. LINK TRỰC TIẾP MP4 / M3U8 -> QUA ARTPLAYER
-  // =======================================================
+  // ==========================================
   const isHls = cleanUrl.includes('.m3u8');
   initCleanArtPlayer(cleanUrl, isHls);
 }
