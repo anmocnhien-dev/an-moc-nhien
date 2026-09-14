@@ -292,7 +292,7 @@ function setVideoSource(url) {
   }
 
   // =======================================================
-  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (CHỐNG POPUP, XOAY NGANG)
+  // 1. NHẬN DIỆN VÀ NHÚNG YOUTUBE (CÓ TẤM CHẮN CHỐNG BAY SANG APP)
   // =======================================================
   const isYouTube = cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
   if (isYouTube) {
@@ -311,12 +311,21 @@ function setVideoSource(url) {
     if (videoId) {
       container.innerHTML = `
         <div style="position: relative; width: 100%; height: 100%; background: #000; overflow: hidden;">
+          <!-- Iframe YouTube -->
           <iframe 
-            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1" 
-            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" 
+            src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3" 
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" 
             allowfullscreen>
           </iframe>
+
+          <!-- TẤM CHẮN 1: Chặn bấm vào Tiêu đề và Avatar Kênh ở trên cùng -->
+          <div style="position: absolute; top: 0; left: 0; width: 85%; height: 55px; z-index: 15; background: transparent;" 
+               onclick="event.stopPropagation(); event.preventDefault();"></div>
+
+          <!-- TẤM CHẮN 2: Chặn bấm vào nút 'Xem trên YouTube' ở góc dưới bên phải -->
+          <div style="position: absolute; bottom: 0; right: 0; width: 160px; height: 48px; z-index: 15; background: transparent;" 
+               onclick="event.stopPropagation(); event.preventDefault();"></div>
         </div>
       `;
       return;
