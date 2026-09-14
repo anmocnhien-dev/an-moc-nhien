@@ -24,18 +24,15 @@ window.currentPlayingUrl = '';
 let art = null;
 
 // =======================================================
-// HỆ THỐNG TRIỆT TIÊU POPUP & NHẢY TAB (PC, ANDROID, IOS)
+// LÁ CHẮN CHỐNG NHẢY TAB & POPUP
 // =======================================================
-
-// 1. Chặn window.open ngầm
 try {
   window.open = function () {
-    console.warn('Đã triệt tiêu lệnh window.open');
+    console.warn('Đã chặn mở tab mới.');
     return null;
   };
 } catch (e) {}
 
-// 2. Chặn các liên kết target="_blank"
 document.addEventListener('click', function (e) {
   const targetLink = e.target && e.target.closest ? e.target.closest('a') : null;
   if (targetLink && targetLink.getAttribute('target') === '_blank') {
@@ -43,11 +40,11 @@ document.addEventListener('click', function (e) {
     if (!href.startsWith('/') && !href.includes(window.location.hostname)) {
       e.preventDefault();
       e.stopPropagation();
+      console.warn('Đã triệt tiêu link nhảy tab ngoại vi:', href);
     }
   }
 }, true);
 
-// 3. Khóa giật tiêu điểm tức thì khi Iframe cố mở cửa sổ mới
 window.addEventListener('blur', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -57,7 +54,6 @@ window.addEventListener('blur', () => {
   }
 });
 
-// 4. Ngăn chặn chuyển trang chính
 window.addEventListener('beforeunload', () => {
   const modal = document.getElementById('playerModal');
   if (modal && modal.style.display === 'block') {
@@ -255,15 +251,17 @@ function setVideoSource(url) {
       embedUrl = cleanUrl.replace('/d/', '/e/');
     }
 
-    // Nạp iframe trực tiếp kèm link thực để máy chủ Byse cấp session (HẾT 404)
-    // Dùng pointer-events: auto trực tiếp nhưng khóa hoàn toàn hành vi window.open & blur trap
+    // Tự phát CÓ TIẾNG (không có muted)
+    const separator = embedUrl.includes('?') ? '&' : '?';
+    const autoPlayWithSoundUrl = `${embedUrl}${separator}autoplay=1&autostart=true`;
+
     container.innerHTML = `
       <div style="position: relative; width: 100%; height: 100%; min-height: 220px; background: #000; overflow: hidden; -webkit-overflow-scrolling: touch;">
         <iframe 
           id="playerIframe"
-          src="${embedUrl}" 
+          src="${autoPlayWithSoundUrl}" 
           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1;" 
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope" 
+          allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *" 
           referrerpolicy="no-referrer"
           playsinline 
           webkit-playsinline 
@@ -275,7 +273,7 @@ function setVideoSource(url) {
     return;
   }
 
-  // Khởi tạo ArtPlayer cho direct link MP4 / M3U8
+  // Khởi tạo ArtPlayer cho link direct MP4 / M3U8
   art = new Artplayer({
     container: '#artPlayerContainer',
     url: cleanUrl,
